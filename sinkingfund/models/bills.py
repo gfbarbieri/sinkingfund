@@ -324,13 +324,13 @@ class Bill:
 
         elif self.frequency.lower() == 'monthly':
 
-            next_due_date = self._increment_monthly(date)
+            next_due_date = self._increment_monthly(date, num_months=self.interval)
 
             return next_due_date
 
         elif self.frequency.lower() == 'quarterly':
 
-            next_due_date = self._increment_monthly(date, num_months=3)
+            next_due_date = self._increment_monthly(date, num_months=3 * self.interval)
             
             return next_due_date
 
