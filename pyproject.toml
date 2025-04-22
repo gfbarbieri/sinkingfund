@@ -1,0 +1,14 @@
+[tool.poetry]
+name = "sinkingfund"
+version = "0.1.0"
+description = "A library for producing contributions towards bills using a sinking fund."
+authors = ["Greg Barbieri <gfbarbieri@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

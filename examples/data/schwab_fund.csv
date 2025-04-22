@@ -1,0 +1,9 @@
+﻿bill_id,service,amount_due,recurring,due_date,start_date,end_date,frequency,interval
+car_insur_1,Car Insurance,774.76,False,04/24/2025,,,,
+suburu_reg,Car Registraion,191.00,True,,05/12/2025,,Annual,1
+honda_reg,Car Registraion,334.00,True,,05/18/2025,,Annual,1
+prop_tax_supl_2024,Property Taxes,11520.23,False,07/31/2025,,,,
+car_insur,Car Insurance,774.76,True,,10/24/2025,,Monthly,6
+prop_tax_1,Property Taxes,13161.15,True,,11/01/2025,,Annual,1
+prop_tax_2,Property Taxes,13161.15,True,,02/01/2026,,Annual,1
+home_insur,Home Insurance,3000.00,True,,03/04/2026,,Annual,1
