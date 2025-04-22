@@ -68,7 +68,6 @@ class IndependentScheduler(BaseScheduler):
 
             # For each envelope, get the next instance of the bill.
             bill = envelope.bill.next_instance(reference_date=start_date)
-            print(bill.due_date, bill.amount_due)
 
             # Skip over envelopes that do not have a next instance of
             # the bill. This occurs if bills are listed in envelopes
