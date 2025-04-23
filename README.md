@@ -1,3 +1,5 @@
+![Sinking Fund](assets/main_image.png)
+
 # SinkingFund
 
 A Python library for managing sinking funds - a financial strategy for systematically saving for future expenses.
