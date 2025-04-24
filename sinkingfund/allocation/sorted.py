@@ -95,23 +95,48 @@ class SortKey(Protocol):
 
     """
     
-    def __call__(self, item: BillInstance) -> Any:
+    def __call__(self, bill: BillInstance, **kwargs: Any) -> Any:
         """
         Extract a sort key from a bill instance.
         
         Parameters
         ----------
-        item: T
-            A bill instance to extract a sort key from
-            
+        bill: BillInstance
+            A bill instance from which to extract a sort key.
+        **kwargs: Any
+            Additional keyword arguments needed by the function.
+
         Returns
         -------
         Any
             A comparable value or tuple of values used for sorting.
             Lower values will be allocated funds first (unless
             reverse=True).
+
+        Notes
+        -----
+        The sort key function should be able to handle the bill instance
+        and any additional keyword arguments. The function must return a
+        comparable value or tuple of values used for sorting
+        (multi-level sorting). For example, the function should return
+        a value or tuple of values that are comparable in that they
+        support the <, <=, >, >=, ==, != operators. This includes
+        numbers (int, float), strings, dates, and other comparable
+        types.
         """
         ...
+
+########################################################################
+## SORT KEYS
+########################################################################
+
+# Map of method names to their sort functions. The sort key
+# is a function that takes an bill instance and returns a value
+# that will be used to sort the envelopes.
+SORT_KEYS = {
+    "cascade": lambda e: e.due_date,
+    "debt_snowball": lambda e: e.amount_due
+}
 
 ########################################################################
 ## SORTED ALLOCATOR
@@ -159,20 +184,12 @@ class SortedAllocator(BaseAllocator):
             Default: False
         """
 
-        # Map of method names to their sort functions. The sort key
-        # is a function that takes an bill instance and returns a value
-        # that will be used to sort the envelopes.
-        self.sort_keys = {
-            "cascade": lambda e: e.due_date,
-            "debt_snowball": lambda e: e.amount_due
-        }
-
         # Set the sort key. If the sort key is a string, then it is a
         # method name and we will use the corresponding sort function.
         # Otherwise, the sort key is a function and we will use it
         # directly.
         if isinstance(sort_key, str):
-            self.sort_func = self.sort_keys.get(sort_key)
+            self.sort_func = SORT_KEYS.get(sort_key)
         else:
             self.sort_func = sort_key
 
@@ -181,7 +198,8 @@ class SortedAllocator(BaseAllocator):
 
     def allocate(
             self, envelopes: list[Envelope], balance: float,
-            curr_date: datetime.date, return_last: bool = False
+            curr_date: datetime.date, return_last: bool = False,
+            **kwargs: Any
         ) -> list[Envelope]:
         """
         Allocate the balance to the envelopes. Updates the envelopes
@@ -196,6 +214,12 @@ class SortedAllocator(BaseAllocator):
             The current balance to allocate.
         curr_date: datetime.date
             The current date to allocate the balance to.
+        return_last: bool
+            Whether to return the last instance of the bill.
+            Default: False
+        **kwargs: Any
+            Additional keyword arguments needed by the sort key
+            function.
         """
 
         # For each envelope, get the next instance of the bill. If the
@@ -216,7 +240,9 @@ class SortedAllocator(BaseAllocator):
         # Sort the envelopes by the sort key. This cannot have None
         # values or it will fail.
         sorted_bills = sorted(
-            bill_instances, key=self.sort_func, reverse=self.reverse
+            bill_instances,
+            key=lambda x: self.sort_func(x, **kwargs),
+            reverse=self.reverse
         )
 
         # Allocate the balance to the envelopes.
