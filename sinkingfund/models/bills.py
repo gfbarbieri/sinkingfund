@@ -66,7 +66,7 @@ from typing import Optional
 ## BILLS
 ########################################################################
 
-@dataclass(frozen=True)
+@dataclass
 class BillInstance:
     """
     An instance of a bill is a single due date and an amount due.

@@ -44,9 +44,11 @@ bills for each expense in your sinking fund strategy.
 ## IMPORTS
 ########################################################################
 
+import datetime
+
 from dataclasses import dataclass
 
-from .bills import Bill
+from .bills import Bill, BillInstance
 from .cash_flow import CashFlow
 
 ########################################################################
@@ -90,3 +92,42 @@ class Envelope:
     allocated: float | None = None
     interval: int=1
     schedule: list[CashFlow] | None = None
+
+    def next_instance(
+        self, reference_date: datetime.date
+    ) -> BillInstance | None:
+        """
+        Get the next instance of the bill. This method extends the
+        `Bill.next_instance` method by making two corrections to the
+        bill instance if necessary:
+
+        #. It returns None if the bill has no next instance.
+        #. It subtracts any existing balance from the amount due if
+        there is an existing balance.
+
+        Parameters
+        ----------
+        reference_date: datetime.date
+            The date to get the next instance of the bill.
+
+        Returns
+        -------
+        BillInstance | None
+            The next instance of the bill.
+        """
+
+        # First, get the next instance of the bill.
+        bill_instance = self.bill.next_instance(reference_date=reference_date)
+
+        # Second, if there is no next instance, return None.
+        if bill_instance is None:
+            return None
+
+        # Third, if a balance was allocated ot the bill, then we need
+        # to subtract that from the amount due. This is equivalent to
+        # saying that the amount due is the amount due minus the amount
+        # allocated, which is stored in the `remaining` attribute.
+        if self.remaining is not None:
+            bill_instance.amount_due = self.remaining
+
+        return bill_instance

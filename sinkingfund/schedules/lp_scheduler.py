@@ -186,7 +186,7 @@ class LPScheduler(BaseScheduler):
     capability, with the default being the open-source CBC solver.
     """
     
-    def __init__(self):
+    def __init__(self, ):
         """
         Initialize the scheduler.
         """
@@ -220,11 +220,10 @@ class LPScheduler(BaseScheduler):
             The collection of envelopes for which to schedule
             contributions. Each envelope should have a valid bill and
             contribution interval defined.
-            
         start_date : datetime.date
             The date from which to begin scheduling contributions. This
             serves as the reference point for all timing calculations.
-        
+
         Returns
         -------
         None
@@ -255,7 +254,7 @@ class LPScheduler(BaseScheduler):
         for envelope in envelopes:
 
             # For each envelope, get the next instance of the bill.
-            bill = envelope.bill.next_instance(reference_date=start_date)
+            bill = envelope.next_instance(reference_date=start_date)
 
             # Skip over envelopes that do not have a next instance of
             # the bill. This occurs if bills are listed in envelopes
@@ -273,7 +272,7 @@ class LPScheduler(BaseScheduler):
         # than expected. This will return a dictionary with the bill ID
         # as the key and a list of cash flows objects as the value.
         opt_contrib = self.optimize_contributions(
-            bills=bills, start_date=start_date
+            bills=bills, start_date=start_date,
         )
 
         # Aggregate the cash flows. If the contribution interval is
@@ -286,7 +285,7 @@ class LPScheduler(BaseScheduler):
 
             # Aggregate the cash flows.
             aggregated_flows = self.aggregate_cash_flows(
-                envelopes=envelope_cash_flows,
+                cash_flows=envelope_cash_flows,
                 start_date=start_date,
                 interval=envelope.interval
             )
@@ -295,7 +294,7 @@ class LPScheduler(BaseScheduler):
             envelope.schedule = aggregated_flows
 
     def optimize_contributions(
-        self, bills: list[BillInstance], start_date: datetime.date
+        self, bills: list[BillInstance], start_date: datetime.date,
     ) -> list[tuple[str, float, datetime.date]]:
         """
         Minimize the difference between the maximum and minimum daily
@@ -362,7 +361,11 @@ class LPScheduler(BaseScheduler):
             days_until_due = (bill.due_date - start_date).days
 
             # 1. Full Funding: add the constraint that the sum of the
-            # contributions for the bill must be equal to the amount.
+            # contributions for the bill must be equal to the amount
+            # due. The one caveat is that the amount due may be less
+            # than the bill amount due if we allocated any existing
+            # balance to the bill. In that case, we don't need to save
+            # for the entire bill amount, only the *remaining* amount.
             model += pulp.lpSum([
                 x[i, t] for t in range(days_until_due)
             ]) == bill.amount_due
