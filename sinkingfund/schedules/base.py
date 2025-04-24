@@ -10,26 +10,26 @@ Scheduling is the process of determining when money should flow into and
 out of envelopes over time. This module provides the framework for
 implementing various scheduling strategies through:
 
-1. Abstract Interface Definition: The BaseScheduler abstract class
-   defines the contract that all scheduling strategies must follow.
-2. Strategy Pattern Implementation: Enables multiple interchangeable
-   scheduling algorithms that can be selected at runtime.
-3. Consistent API: Ensures all scheduling strategies support the same
-   core operations with consistent parameters.
+#. Abstract Interface Definition: The BaseScheduler abstract class
+defines the contract that all scheduling strategies must follow.
+#. Strategy Pattern Implementation: Enables multiple interchangeable
+scheduling algorithms that can be selected at runtime.
+#. Consistent API: Ensures all scheduling strategies support the same
+core operations with consistent parameters.
 
 The scheduling process determines:
-- When contributions should be made to each envelope.
-- How contributions are timed relative to bill due dates.
-- The pattern and frequency of cash flows.
-- How to handle irregular payment cycles.
+* When contributions should be made to each envelope.
+* How contributions are timed relative to bill due dates.
+* The pattern and frequency of cash flows.
+* How to handle irregular payment cycles.
 
 By implementing the BaseScheduler interface, specialized scheduling
 strategies can implement approaches like:
-- Equal periodic contributions leading up to a bill's due date.
-- Front-loaded contributions to build buffer early.
-- Just-in-time contribution schedules.
-- Income-synchronized contribution timing.
-- Dynamic scheduling based on changing circumstances.
+* Equal periodic contributions leading up to a bill's due date.
+* Front-loaded contributions to build buffer early.
+* Just-in-time contribution schedules.
+* Income-synchronized contribution timing.
+* Dynamic scheduling based on changing circumstances.
 
 Schedulers transform allocation plans into actionable timelines,
 creating the cash flow roadmap needed to successfully fund future
