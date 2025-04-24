@@ -12,32 +12,33 @@ associated cash flows. Think of it as a digital representation of a
 savings account dedicated to your future planned expenses, allowing
 you to:
 
-1. Track Balances: Monitor your overall sinking fund balance and how
+#. Track Balances: Monitor your overall sinking fund balance and how
 it's divided among different financial obligations.
-2. Project Future States: Forecast your account balance over time as
+#. Project Future States: Forecast your account balance over time as
 contributions are made and bills are paid.
-3. Visualize Cash Flows: See both inflows (contributions) and
+#. Visualize Cash Flows: See both inflows (contributions) and
 outflows (payments) on a timeline.
-4. Analyze Funding Adequacy: Determine if your contribution schedule
+#. Analyze Funding Adequacy: Determine if your contribution schedule
 will fully fund all planned expenses by their due dates.
 
 The Account model maintains:
-- A collection of Envelopes (each tied to a specific Bill).
-- A timeline of AccountState snapshots showing balance changes over
+
+* A collection of Envelopes (each tied to a specific Bill).
+* A timeline of AccountState snapshots showing balance changes over
 time.
-- Methods to query important dates (first/last contributions, payment
+* Methods to query important dates (first/last contributions, payment
 dates).
-- Calculations for total scheduled contributions and payments.
+* Calculations for total scheduled contributions and payments.
 
 Core capabilities include:
-- State Projection: Calculating daily account states from the first to
-  last cash flow.
-- Cash Flow Management: Aggregating all scheduled cash flows across all
-  envelopes.
-- Date Boundary Identification: Finding the first and last dates for
-  various financial events.
-- Balance Analysis: Breaking down how the account balance is allocated
-  across different obligations.
+* State Projection: Calculating daily account states from the first to
+last cash flow.
+* Cash Flow Management: Aggregating all scheduled cash flows across all
+envelopes.
+* Date Boundary Identification: Finding the first and last dates for
+various financial events.
+* Balance Analysis: Breaking down how the account balance is allocated
+across different obligations.
 
 This model enables a comprehensive view of your sinking fund strategy,
 allowing you to validate that your saving approach will meet your

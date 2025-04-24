@@ -18,21 +18,20 @@ Rather than representing regular monthly expenses, sinking fund
 envelopes accumulate money over time for future, often irregular
 expenses. Each envelope:
 
-1. Is linked to a specific bill or expense.
-2. Tracks how much has been allocated for that expense and how much is
+#. Is linked to a specific bill or expense.
+#. Tracks how much has been allocated for that expense and how much is
 still needed before the bill is due.
 
 Benefits of the envelope approach for sinking funds:
 
-- Visualization: Makes abstract future expenses tangible by creating
+* Visualization: Makes abstract future expenses tangible by creating
 dedicated pools of money.
-- Prioritization: Helps prioritize which expenses to fund first when
-resources are limited.
-- Prevention of "borrowing": Discourages using money allocated for one
-purpose to cover another expense.
-- Tracking progress: Shows progress toward fully funding each planned
+* Prioritization: Helps prioritize which expenses to fund first when
+* Prevention of "borrowing": Discourages using money allocated for
+one purpose to cover another expense.
+* Tracking progress: Shows progress toward fully funding each planned
 expense.
-- Peace of mind: Reduces financial anxiety by knowing that money is
+* Peace of mind: Reduces financial anxiety by knowing that money is
 being set aside for future obligations.
 
 This Envelope class serves as the digital equivalent of physical

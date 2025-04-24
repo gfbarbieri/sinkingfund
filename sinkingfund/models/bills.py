@@ -10,26 +10,28 @@ The bill models serve as the foundation of the sinking fund,
 representing the financial obligations that require planning and
 saving. This module offers two key abstractions:
 
-1. Bill: Represents the full definition of a financial obligation,
+#. Bill: Represents the full definition of a financial obligation,
 including:
-- Core information (ID, service name, amount).
-- Recurrence pattern (if applicable).
-- Time boundaries (start date, end date).
+
+   * Core information (ID, service name, amount).
+   * Recurrence pattern (if applicable).
+   * Time boundaries (start date, end date).
    
 Bills can be one-time expenses (like an annual insurance payment) or
 recurring obligations (like a monthly subscription). For recurring
 bills, the system supports various frequencies (daily, weekly, monthly,
 quarterly, annual) with customizable intervals.
 
-2. BillInstance: Represents a specific occurrence of a bill with a
+#. BillInstance: Represents a specific occurrence of a bill with a
 concrete due date and amount. A recurring bill generates multiple bill
 instances over time.
 
 The Bill class provides sophisticated date calculation methods to
 determine:
-- When the next payment is due.
-- The sequence of all future payments.
-- The final payment before a specified end date.
+
+* When the next payment is due.
+* The sequence of all future payments.
+* The final payment before a specified end date.
 
 These calculations handle calendar complexities like varying month
 lengths and leap years. For example, a monthly bill due on the 31st will
@@ -37,11 +39,12 @@ correctly adjust to the last day of shorter months.
 
 By modeling bills with this level of detail, the sinking fund system
 can:
-- Project future cash flow needs with precision.
-- Calculate required savings rates to meet obligations.
-- Track progress toward fully funded financial goals.
-- Visualize the timing of upcoming expenses.
-- Group and prioritize expenses for allocation strategies.
+
+* Project future cash flow needs with precision.
+* Calculate required savings rates to meet obligations.
+* Track progress toward fully funded financial goals.
+* Visualize the timing of upcoming expenses.
+* Group and prioritize expenses for allocation strategies.
 
 The bill models work in concert with the Envelope and CashFlow models
 to provide a complete picture of your sinking fund strategy and
@@ -324,13 +327,17 @@ class Bill:
 
         elif self.frequency.lower() == 'monthly':
 
-            next_due_date = self._increment_monthly(date, num_months=self.interval)
+            next_due_date = self._increment_monthly(
+                date, num_months=self.interval
+            )
 
             return next_due_date
 
         elif self.frequency.lower() == 'quarterly':
 
-            next_due_date = self._increment_monthly(date, num_months=3 * self.interval)
+            next_due_date = self._increment_monthly(
+                date, num_months=3 * self.interval
+            )
             
             return next_due_date
 
