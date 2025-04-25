@@ -284,14 +284,22 @@ class LPScheduler(BaseScheduler):
             envelope_cash_flows = opt_contrib[envelope.bill.bill_id]
 
             # Aggregate the cash flows.
-            aggregated_flows = self.aggregate_cash_flows(
+            agg_flows = self.aggregate_cash_flows(
                 cash_flows=envelope_cash_flows,
                 start_date=start_date,
                 interval=envelope.interval
             )
 
+            # Add the final cash flow to the envelope, which is the
+            # total amount due.
+            agg_flows.append(CashFlow(
+                    bill_id=bill.bill_id,
+                    date=bill.due_date,
+                    amount=-envelope.bill.amount_due
+            ))
+
             # Add the aggregated cash flows to the envelope.
-            envelope.schedule = aggregated_flows
+            envelope.schedule = agg_flows
 
     def optimize_contributions(
         self, bills: list[BillInstance], start_date: datetime.date,

@@ -88,10 +88,10 @@ class Envelope:
     """
 
     bill: Bill
-    remaining: float | None = None
-    allocated: float | None = None
+    remaining: float
+    allocated: float=0
     interval: int=1
-    schedule: list[CashFlow] | None = None
+    schedule: list[CashFlow] | None=None
 
     def next_instance(
         self, reference_date: datetime.date

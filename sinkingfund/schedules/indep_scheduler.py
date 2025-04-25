@@ -242,6 +242,8 @@ class IndependentScheduler(BaseScheduler):
         due date.
         """
 
+        cash_flows = []
+
         for envelope in envelopes:
 
             # For each envelope, get the next instance of the bill.
@@ -256,10 +258,14 @@ class IndependentScheduler(BaseScheduler):
             # Calculate the number of intervals between the current
             # date and the due date. Intervals are the number of days
             # between cash flows.
-            intervals = sorted(self.calculate_intervals(
+            # intervals = sorted(self.calculate_intervals(
+            #     start_date=start_date, end_date=bill.due_date,
+            #     interval=envelope.interval
+            # ))
+            intervals = self.calculate_intervals(
                 start_date=start_date, end_date=bill.due_date,
                 interval=envelope.interval
-            ))
+            )
 
             # Calculate the cash flow required to pay off the bill in
             # the given time frame.
@@ -290,6 +296,7 @@ class IndependentScheduler(BaseScheduler):
             # current date is a datetime.date object, so we need to add
             # the interval to it as a timedelta.
             cash_flows = []
+            current_date = start_date
 
             for i, (days, amount) in enumerate(interval_contrib):
 
@@ -303,12 +310,15 @@ class IndependentScheduler(BaseScheduler):
                 if amount == 0:
                     continue
 
-                # Create the date of the contribution.
-                date = start_date + datetime.timedelta(days=(i * days))
+                # Update the date using the actual interval size for
+                # this period. current_date is already set to start_date
+                # for the first iteration
+                if i > 0:
+                    current_date = current_date + datetime.timedelta(days=days)
 
                 # Create the contribution.
                 cash_flow = CashFlow(
-                    bill_id=bill.bill_id, date=date, amount=amount
+                    bill_id=bill.bill_id, date=current_date, amount=amount
                 )
 
                 # Add the contribution to the list of contributions.
@@ -466,3 +476,96 @@ class IndependentScheduler(BaseScheduler):
             intervals.append(remaining_days)
 
         return intervals
+    
+    def aggregate_cash_flows(
+        self, cash_flows: list[CashFlow], start_date: datetime.date,
+        interval: int
+    ) -> list[CashFlow]:
+        """
+        Aggregate cash flows into a single cash flow per interval
+        period. This is done by summing up all contributions for each
+        interval period and creating a single cash flow for the total
+        amount in that interval.
+
+        Parameters
+        ----------
+        cash_flows : list
+            List of CashFlow objects.
+        start_date : datetime.date
+            Start date.
+        interval : int
+            Contribution interval in days.
+
+        Returns
+        -------
+        list
+            List of CashFlow objects.
+        """
+
+        # Initialize dictionary to track total contributions per
+        # interval period.
+        int_contribs = {}
+        bill_id = cash_flows[0].bill_id
+
+        # Step 1: Sum up all contributions by interval period.
+        #
+        # The first interval has index 0, the second has index 1, etc.
+        # They represent the number of days since the start date. If
+        # the interval is 14 days, interval index 0 is the first 14 day
+        # period, interval index 1 is the second 14 day period, etc.
+        # When the loop is done, interval_contributions will have a key
+        # for each interval index, and the value will be the total
+        # contribution for that interval. The interval index tells us
+        # that it belongs to the interval index-th interval, regardless
+        # of the exact date of the contribution.
+        for cf in cash_flows:
+
+            # Calculate days since start date.
+            days_since_start = (cf.date - start_date).days
+            
+            # Determine to which interval period this contribution
+            # belongs. The integer division by the interval length
+            # gives the index of the interval, which is enough to
+            # determine which interval the contribution belongs to.
+            int_idx = days_since_start // interval
+            
+            # Add this contribution to the interval sum. Initialize to 0
+            # if this is the first contribution to this interval.
+            if int_idx not in int_contribs:
+                int_contribs[int_idx] = 0
+
+            # Add the contribution to the interval's total.
+            int_contribs[int_idx] += cf.amount
+
+        # Step 2: Create one aggregated cash flow per interval period.
+        agg_flows = []
+
+        for int_idx, total_amount in sorted(int_contribs.items()):
+
+            # Calculate the date for this interval. This approach puts
+            # all contributions on the first day of the interval. This
+            # avoids complications with partial intervals, but comes
+            # at the cost of paying off the bill earlier than the due
+            # date by the contribution interval size.
+            int_date = (
+                start_date + datetime.timedelta(days=int_idx * interval)
+            )
+
+            # Create a single cash flow for the total amount in this
+            # interval. If the total amount is negative, we do not add
+            # a cash flow because it means that the bill is paid off.
+            if total_amount > 0:
+
+                # Create the cash flow object. We round the amount to 2
+                # decimal places to avoid floating point precision
+                # issues. However, this is not a perfect solution, and
+                # can lead to errors in the sum of the contributions.
+                agg_flows.append(
+                    CashFlow(
+                        bill_id=bill_id,
+                        date=int_date,
+                        amount=round(total_amount, 2)
+                    )
+                )
+
+        return agg_flows
