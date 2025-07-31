@@ -13,25 +13,28 @@ sinking fund system.
 
 Key capabilities:
 
-1. Bill Loading: Convert tabular bill data into fully-formed Bill
+#. Bill Loading: Convert tabular bill data into fully-formed Bill
 objects.
-- Handles both one-time and recurring bills.
-- Processes dates with proper formatting.
-- Converts data types appropriately (dates, numbers, strings).
-- Manages optional fields with proper defaults.
 
-2. Envelope Creation: Transform bill data directly into budget
+   * Handles both one-time and recurring bills.
+   * Processes dates with proper formatting.
+   * Converts data types appropriately (dates, numbers, strings).
+   * Manages optional fields with proper defaults.
+
+# . Envelope Creation: Transform bill data directly into budget
 envelopes.
-- Creates envelope containers for each bill.
-- Associates contribution intervals with each envelope.
-- Supports both uniform and variable contribution schedules.
+
+   * Creates envelope containers for each bill.
+   * Associates contribution intervals with each envelope.
+   * Supports both uniform and variable contribution schedules.
 
 These loaders handle the complexities of data import, including:
-- Type safety: Ensuring numeric values remain numeric, even with
+
+* Type safety: Ensuring numeric values remain numeric, even with
 missing values.
-- Date parsing: Converting string dates to proper date objects.
-- Null handling: Managing optional fields that may be empty.
-- Validation: Basic checks to ensure required fields are present.
+* Date parsing: Converting string dates to proper date objects.
+* Null handling: Managing optional fields that may be empty.
+* Validation: Basic checks to ensure required fields are present.
 
 By centralizing data loading logic, these utilities promote consistency
 and reduce the risk of data formatting errors throughout the

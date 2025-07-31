@@ -4,40 +4,45 @@ Proportional Allocation
 
 Proportional Weighting (Amount-Based)
 -------------------------------------
-* How it works: Allocate proportionally to the bill amount
-* Formula: allocation = balance * (bill_amount / total_all_bills)
-* Pros: Larger bills get more funding, simple to explain
-* Cons: Ignores due dates entirely
-* Best for: When relative bill size is the main concern
+
+* How it works: Allocate proportionally to the bill amount.
+* Formula: allocation = balance * (bill_amount / total_all_bills).
+* Pros: Larger bills get more funding, simple to explain.
+* Cons: Ignores due dates entirely.
+* Best for: When relative bill size is the main concern.
 
 Equal Distribution
 ------------------
-* How it works: Divide available balance equally among all bills
-* Pros: Simple, fair, every bill gets something
-* Cons: Doesn't consider urgency or bill size
-* Best for: When all bills have similar importance/urgency
+
+* How it works: Divide available balance equally among all bills.
+* Pros: Simple, fair, every bill gets something.
+* Cons: Doesn't consider urgency or bill size.
+* Best for: When all bills have similar importance/urgency.
 
 Urgency Weighting (Due Date Priority)
 -------------------------------------
+
 * How it works: Allocate based on a formula that considers both amount
-and due date
-* Formula: weight = amount_due / (due_date * current_date)
-* Pros: Balances urgency and size, smoother allocations
-* Cons: Complex to explain, may underfund urgent small bills
-* Best for: Balanced approach considering both size and timing
+  and due date.
+* Formula: weight = amount_due / (due_date - current_date)
+* Pros: Balances urgency and size, smoother allocations.
+* Cons: Complex to explain, may underfund urgent small bills.
+* Best for: Balanced approach considering both size and timing.
 
 Zero Weighting
 --------------
-* How it works: Set all weights to zero
-* Pros: Simple, fair, every bill gets nothing
-* Cons: Ignores all bills
+
+* How it works: Set all weights to zero.
+* Pros: Simple, fair, every bill gets nothing.
+* Cons: Ignores all bills.
 * Best for: When all bills are unimportant, or when the user wants to
   manually allocate bills.
 
 Custom Weighting
------------------
+----------------
+
 * How it works: Use a custom function to calculate the weights for
-each bill.
+  each bill.
 * Pros: Can be used to implement any weighting logic.
 * Cons: Must be manually implemented.
 * Best for: When the user wants to implement a custom weighting logic.
