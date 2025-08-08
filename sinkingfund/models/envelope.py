@@ -94,7 +94,7 @@ class Envelope:
     schedule: list[CashFlow] | None=None
 
     def next_instance(
-        self, reference_date: datetime.date
+        self, reference_date: datetime.date, inclusive: bool=False
     ) -> BillInstance | None:
         """
         Get the next instance of the bill. This method extends the
@@ -105,6 +105,9 @@ class Envelope:
         ----------
         reference_date: datetime.date
             The date to get the next instance of the bill.
+        inclusive: bool
+            If True, includes bills due exactly on the reference date.
+            If False, only returns bills due after the reference date.
 
         Returns
         -------
@@ -113,7 +116,9 @@ class Envelope:
         """
 
         # 1. Get the next instance of the bill.
-        bill_instance = self.bill.next_instance(reference_date=reference_date)
+        bill_instance = self.bill.next_instance(
+            reference_date=reference_date, inclusive=inclusive
+        )
 
         # 2. If there is a next instance, and a balance was allocated
         # to the bill, then we need to subtract that from the amount
