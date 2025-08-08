@@ -1,167 +1,100 @@
 """
-Data Loading Utilities
-======================
+Data Loaders
+============
 
-This module provides utilities for loading financial data from external
-sources into the sinking fund system, ensuring proper type conversion
-and validation.
-
-Loading financial data from external sources is a critical part of any
-budgeting system. These utilities bridge the gap between raw data files
-(like CSV spreadsheets) and the structured object models used by the
-sinking fund system.
-
-Key capabilities:
-
-#. Bill Loading: Convert tabular bill data into fully-formed Bill
-objects.
-
-   * Handles both one-time and recurring bills.
-   * Processes dates with proper formatting.
-   * Converts data types appropriately (dates, numbers, strings).
-   * Manages optional fields with proper defaults.
-
-#. Envelope Creation: Transform bill data directly into budget
-envelopes.
-
-   * Creates envelope containers for each bill.
-   * Associates contribution intervals with each envelope.
-   * Supports both uniform and variable contribution schedules.
-
-These loaders handle the complexities of data import, including:
-
-* Type safety: Ensuring numeric values remain numeric, even with
-missing values.
-* Date parsing: Converting string dates to proper date objects.
-* Null handling: Managing optional fields that may be empty.
-* Validation: Basic checks to ensure required fields are present.
-
-By centralizing data loading logic, these utilities promote consistency
-and reduce the risk of data formatting errors throughout the
-application. They provide a clean interface between external data
-sources and the internal object model, making it easy to incorporate
-financial data from various sources while maintaining data integrity.
-
+Functions for converting standardized dictionary data into domain model
+objects. These loaders are format-agnostic and work with data from any
+supported file format.
 """
 
 ########################################################################
 ## IMPORTS
 ########################################################################
 
-import pandas as pd
+from typing import List
 
-from ..models.envelope import Envelope
 from ..models.bills import Bill
+from .file_utils import detect_file_format
+from .format_registry import get_reader_for_format
 
 ########################################################################
-## LOADERS
+## FUNCTIONS
 ########################################################################
 
-def load_bills_from_csv(path: str) -> list[Bill]:
+def load_bills_from_data(data: List[dict]) -> List[Bill]:
     """
-    Load the bills from a CSV file.
-
+    Convert standardized dictionary data into Bill objects.
+    
+    This function is format-agnostic - it only cares about the
+    dictionary structure, not where the data originated. It handles
+    the business logic of converting raw data into properly configured
+    Bill instances.
+    
     Parameters
     ----------
-    path: str
-        The path to the CSV file.
-
+    data : List[dict]
+        List of dictionaries containing bill data with standardized
+        column names and types.
+        
     Returns
     -------
-    list[Bill]
-        The bills.
+    List[Bill]
+        List of properly configured Bill objects.
     """
 
-    # Load the bills from the CSV file.
-    bills_df = pd.read_csv(
-        path,
-        usecols=[
-            'bill_id', 'service', 'amount_due', 'recurring', 'due_date',
-            'start_date', 'end_date', 'frequency', 'interval',
-            'occurrences'
-        ],
-        parse_dates=['due_date', 'start_date', 'end_date'],
-        date_format='%m/%d/%Y',
-        dtype={
-            'bill_id': 'str', 'service': 'str', 'amount_due': 'float',
-            'recurring': 'bool', 'interval': 'Int64', 'frequency': 'str',
-            'occurrences': 'Int64'
-        }
-    )
-
-    # Convert the date columns to datetime.date objects. Handle optional
-    # date columns which might be NaN.
-    # for col in ['due_date', 'start_date', 'end_date']:
-    #     bills_df[col] = bills_df[col].apply(
-    #         lambda x: x.date() if pd.notna(x) else None
-    #     )
-
-    # Convert any <NA> values to None.
-    # for col in ['interval', 'occurrences']:
-    #     bills_df[col] = bills_df[col].apply(
-    #         lambda x: None if pd.isna(x) else x.astype('int64')
-    #     )
-
-    # print(bills_df['occurrences'].astype('int64'))
-    # print(bills_df)
-
-    # Create the bills.
+    # Initialize the list of bills.
     bills = []
 
-    for _, row in bills_df.iterrows():
+    # Convert the data to Bill objects.
+    for record in data:
 
-        # Create the bill.
+        # Create a Bill object from the record.
         bill = Bill(
-            bill_id=row['bill_id'],
-            service=row['service'],
-            amount_due=row['amount_due'],
-            recurring=row['recurring'],
-            due_date=row['due_date'].date() if pd.notna(row['due_date']) else None,
-            start_date=row['start_date'].date() if pd.notna(row['start_date']) else None,
-            end_date=row['end_date'].date() if pd.notna(row['end_date']) else None,
-            frequency=row['frequency'].lower() if pd.notna(row['frequency']) else None,
-            interval=row['interval'] if pd.notna(row['interval']) else None,
-            occurrences=row['occurrences'] if pd.notna(row['occurrences']) else None
+            bill_id=record['bill_id'],
+            service=record['service'],
+            amount_due=record['amount_due'],
+            recurring=record['recurring'],
+            due_date=record.get('due_date'),
+            start_date=record.get('start_date'),
+            end_date=record.get('end_date'),
+            frequency=record.get('frequency'),
+            interval=record.get('interval'),
+            occurrences=record.get('occurrences')
         )
 
+        # Add the bill to the list.
         bills.append(bill)
 
     return bills
 
-def load_envelopes_from_csv(
-    path: str, contrib_intervals: list[int] | int
-) -> list[Envelope]:
+def load_bills_from_file(file_path: str, **kwargs) -> List[Bill]:
     """
-    Load the envelopes from a CSV file.
-
+    Load bills directly from any supported file format.
+    
+    This is the main entry point for loading bill data. It automatically
+    detects the file format and uses the appropriate reader, then
+    converts the data to Bill objects.
+    
     Parameters
     ----------
-    path: str
-        The path to the CSV file.
-    contrib_intervals: list[int] | int
-        The contribution intervals for the envelopes. If a single
-        integer, all envelopes are expected to have the same
-        contribution interval.
-
+    file_path : str
+        Path to the data file.
+    **kwargs
+        Format-specific options (e.g., sheet_name for Excel files).
+        
     Returns
     -------
-    list[Envelope]
-        The envelopes.
+    List[Bill] 
+        List of Bill objects loaded from the file.
     """
 
-    # Load the bills from the CSV file.
-    bills = load_bills_from_csv(path)
+    # Detect the file format and choose the appropriate reader.
+    file_format = detect_file_format(file_path)
+    
+    reader = get_reader_for_format(file_format)
+    data = reader(file_path, **kwargs)
+    
+    # Convert the data to Bill objects.
+    bills = load_bills_from_data(data)
 
-    # If the contribution intervals are a single integer, the all bills
-    # are expected to have the same contribution interval. Convert it
-    # to a list equal in length to the number of bills.
-    if isinstance(contrib_intervals, int):
-        contrib_intervals = [contrib_intervals] * len(bills)
-
-    # Create the envelopes.
-    envelopes = [
-        Envelope(bill=bill, remaining=bill.amount_due, interval=interval)
-        for bill, interval in zip(bills, contrib_intervals)
-    ]
-
-    return envelopes
+    return bills
