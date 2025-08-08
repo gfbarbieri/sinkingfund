@@ -21,7 +21,7 @@ objects.
    * Converts data types appropriately (dates, numbers, strings).
    * Manages optional fields with proper defaults.
 
-# . Envelope Creation: Transform bill data directly into budget
+#. Envelope Creation: Transform bill data directly into budget
 envelopes.
 
    * Creates envelope containers for each bill.
@@ -77,19 +77,33 @@ def load_bills_from_csv(path: str) -> list[Bill]:
         path,
         usecols=[
             'bill_id', 'service', 'amount_due', 'recurring', 'due_date',
-            'start_date', 'end_date', 'frequency', 'interval'
+            'start_date', 'end_date', 'frequency', 'interval',
+            'occurrences'
         ],
         parse_dates=['due_date', 'start_date', 'end_date'],
         date_format='%m/%d/%Y',
-        dtype={'interval': 'Int64', 'frequency': 'string'}
+        dtype={
+            'bill_id': 'str', 'service': 'str', 'amount_due': 'float',
+            'recurring': 'bool', 'interval': 'Int64', 'frequency': 'str',
+            'occurrences': 'Int64'
+        }
     )
 
     # Convert the date columns to datetime.date objects. Handle optional
     # date columns which might be NaN.
-    for col in ['due_date', 'start_date', 'end_date']:
-        bills_df[col] = bills_df[col].apply(
-            lambda x: x.date() if pd.notna(x) else None
-        )
+    # for col in ['due_date', 'start_date', 'end_date']:
+    #     bills_df[col] = bills_df[col].apply(
+    #         lambda x: x.date() if pd.notna(x) else None
+    #     )
+
+    # Convert any <NA> values to None.
+    # for col in ['interval', 'occurrences']:
+    #     bills_df[col] = bills_df[col].apply(
+    #         lambda x: None if pd.isna(x) else x.astype('int64')
+    #     )
+
+    # print(bills_df['occurrences'].astype('int64'))
+    # print(bills_df)
 
     # Create the bills.
     bills = []
@@ -102,11 +116,12 @@ def load_bills_from_csv(path: str) -> list[Bill]:
             service=row['service'],
             amount_due=row['amount_due'],
             recurring=row['recurring'],
-            due_date=row['due_date'],
-            start_date=row['start_date'],
-            end_date=row['end_date'],
-            frequency=row['frequency'] if pd.notna(row['frequency']) else None,
+            due_date=row['due_date'].date() if pd.notna(row['due_date']) else None,
+            start_date=row['start_date'].date() if pd.notna(row['start_date']) else None,
+            end_date=row['end_date'].date() if pd.notna(row['end_date']) else None,
+            frequency=row['frequency'].lower() if pd.notna(row['frequency']) else None,
             interval=row['interval'] if pd.notna(row['interval']) else None,
+            occurrences=row['occurrences'] if pd.notna(row['occurrences']) else None
         )
 
         bills.append(bill)
@@ -114,8 +129,8 @@ def load_bills_from_csv(path: str) -> list[Bill]:
     return bills
 
 def load_envelopes_from_csv(
-        path: str, contrib_intervals: list[int] | int
-    ) -> list[Envelope]:
+    path: str, contrib_intervals: list[int] | int
+) -> list[Envelope]:
     """
     Load the envelopes from a CSV file.
 
@@ -137,8 +152,6 @@ def load_envelopes_from_csv(
     # Load the bills from the CSV file.
     bills = load_bills_from_csv(path)
 
-    # Envelopes are 
-
     # If the contribution intervals are a single integer, the all bills
     # are expected to have the same contribution interval. Convert it
     # to a list equal in length to the number of bills.
@@ -147,10 +160,7 @@ def load_envelopes_from_csv(
 
     # Create the envelopes.
     envelopes = [
-        Envelope(
-            bill=bill,
-            interval=interval
-        )
+        Envelope(bill=bill, remaining=bill.amount_due, interval=interval)
         for bill, interval in zip(bills, contrib_intervals)
     ]
 

@@ -98,12 +98,8 @@ class Envelope:
     ) -> BillInstance | None:
         """
         Get the next instance of the bill. This method extends the
-        `Bill.next_instance` method by making two corrections to the
-        bill instance if necessary:
-
-        #. It returns None if the bill has no next instance.
-        #. It subtracts any existing balance from the amount due if
-        there is an existing balance.
+        `Bill.next_instance` method by making a correction for the
+        amount allocated to the bill.
 
         Parameters
         ----------
@@ -116,18 +112,13 @@ class Envelope:
             The next instance of the bill.
         """
 
-        # First, get the next instance of the bill.
+        # 1. Get the next instance of the bill.
         bill_instance = self.bill.next_instance(reference_date=reference_date)
 
-        # Second, if there is no next instance, return None.
-        if bill_instance is None:
-            return None
-
-        # Third, if a balance was allocated ot the bill, then we need
-        # to subtract that from the amount due. This is equivalent to
-        # saying that the amount due is the amount due minus the amount
-        # allocated, which is stored in the `remaining` attribute.
-        if self.remaining is not None:
+        # 2. If there is a next instance, and a balance was allocated
+        # to the bill, then we need to subtract that from the amount
+        # due. This is stored in the `remaining` attribute.
+        if bill_instance is not None and self.remaining is not None:
             bill_instance.amount_due = self.remaining
 
         return bill_instance

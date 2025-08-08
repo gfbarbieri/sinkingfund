@@ -88,7 +88,6 @@ class BillInstance:
     amount_due: float
     due_date: datetime.date
 
-@dataclass
 class Bill:
     """
     A bill is a financial obligation that has a due date and an amount
@@ -102,176 +101,330 @@ class Bill:
         The name of the service that the bill is for.
     amount_due: float
         The amount of the bill.
-    recurring: bool
-        Whether the bill is recurring.
     start_date: datetime.date
         The date of the first due date.
+    end_date: datetime.date
+        The end date of the bill.
     frequency: str
         The frequency of the bill. For example, 'monthly', 'quarterly',
-        'annual', etc.
+        'annual', etc. This is None for non-recurring bills.
     interval: int
         The interval of the bill. For example, if the bill is bi-weekly,
         the interval is 2 and the frequency is weekly. If the bill is
-        monthly, the interval is 1 and the frequency is monthly.
-    end_date: Optional[datetime.date]
-        The optional end date of the bill.
+        monthly, the interval is 1 and the frequency is monthly. This is
+        None for non-recurring bills.
     """
 
-    bill_id: str
-    service: str
-    amount_due: float
-    recurring: bool
-    due_date: Optional[datetime.date]=None
-    start_date: Optional[datetime.date]=None
-    end_date: Optional[datetime.date]=None
-    frequency: Optional[str]=None
-    interval: Optional[int]=1
+    def __init__(
+        self, bill_id: str, service: str, amount_due: float, recurring: bool,
+        due_date: Optional[datetime.date]=None,
+        start_date: Optional[datetime.date]=None,
+        end_date: Optional[datetime.date]=None, frequency: Optional[str]=None,
+        interval: Optional[int]=None, occurrences: Optional[int]=None
+    ):
+        self.bill_id = bill_id
+        self.service = service
+        self.amount_due = amount_due
+        self.recurring = recurring
+        self.start_date = start_date
+        self.end_date = end_date
+        self.frequency = frequency
+        self.interval = interval
+        self.occurrences = occurrences
+
+        # If not a recurring bill, then the start and end dates are the
+        # the due dates and the occurrences is 1.
+        if recurring == False:
+            self.start_date = due_date
+            self.end_date = due_date
+            self.occurrences = 1
+    
+        # If a bill is marked as recurring but the end date is None and
+        # the occurrences is 1, then the bill is not recurring. So
+        # instantiate the bill as non-recurring.
+        elif (
+            recurring == True and end_date is None
+            and occurrences is not None and occurrences == 1
+        ):
+            self.recurring = False
+            self.end_date = start_date
+            self.frequency = None
+            self.interval = None
+
+        # If a recurring bill and the number of occurrences is not None
+        # and greater than 1, then we will build the end date. The
+        # pattern is always occurrences - 1 because the start_date is
+        # already the first occurrence, so you only need to increment by
+        # the remaining (occurrences - 1) intervals to reach the final
+        # occurrence.
+        elif recurring == True and occurrences is not None and occurrences > 1:
+            self.end_date = self._increment_date(
+                reference_date=start_date,
+                frequency=frequency,
+                interval=interval,
+                num_intervals=(occurrences - 1)
+            )
+
+        # If a recurring bill, the end date is set, but the occurrences
+        # is None, then we need to calculate the number of occurrences
+        # based on the start date, end date, and frequency.
+        elif (
+            recurring == True and end_date is not None
+            and occurrences is None
+        ):
+            self.occurrences = self._calculate_occurrences_in_range(
+                start_date=start_date,
+                end_date=end_date,
+                frequency=frequency,
+                interval=interval
+            )
 
     def next_instance(
-        self, reference_date: datetime.date, return_last: bool=False
+        self, reference_date: datetime.date
     ) -> BillInstance | None:
         """
-        Get the next instance of the bill.
+        Get the next upcoming instance of a recurring bill relative to a
+        reference date.
+        
+        This method finds the first bill instance that is due on or
+        after the reference date, handling the complexities of recurring
+        bill schedules including start dates, end dates, and frequency
+        calculations.
+        
+        Parameters
+        ----------
+        reference_date : datetime.date
+            The reference date from which to search for the next bill
+            instance. This can be any date, not necessarily a due date.
+            
+        Returns
+        -------
+        BillInstance | None
+            The next bill instance due on or after the reference date,
+            or None if no future instances exist (e.g., reference date
+            is past the bill's end date).
+            
+        Notes
+        -----
+        The method handles three main scenarios:
+        
+        1. **Past end date**: Returns None if reference date exceeds the
+        bill's end date (if set).
+        2. **Before/at start**: Returns the first instance (start_date)
+        if reference date is on or before the bill's start date.
+        3. **Within active period**: Iterates through the recurring
+        schedule to find the first due date on or after the reference
+        date.
+        
+        For scenario 3, the method efficiently steps through due dates
+        without generating the entire schedule, stopping at the first
+        valid instance.
+        """
 
+        # 1. Reference date is beyond the bill's active period.
+        # If an end date is set and we're past it, no future instances
+        # exist.
+        if self.end_date is not None and reference_date > self.end_date:
+            return None
+        
+        # 2. Reference date is at or before the bill's first due date.
+        # The next instance is simply the first occurrence (start_date).
+        elif reference_date <= self.start_date:
+            return BillInstance(
+                bill_id=self.bill_id,
+                service=self.service,
+                due_date=self.start_date,
+                amount_due=self.amount_due
+            )
+        
+        # 3. Reference date falls within the bill's active period.
+        # Need to find the first due date that occurs on or after
+        # reference_date.
+        else:
+
+            # Start iterating from the bill's first due date.
+            current_date = self.start_date
+            
+            # Step through the recurring schedule until we find a due
+            # date that is on or after our reference date. This gives
+            # us the "upcoming" instance relative to the reference
+            # date.
+            while current_date < reference_date:
+                current_date = self._next_due_date(current_date)
+
+            # Verify the found due date doesn't exceed the bill's end
+            # date. If it does, no valid future instances exist within
+            # the bill's lifetime.
+            if self.end_date is not None and current_date > self.end_date:
+                return None
+            
+            # Return the first valid due date on or after the reference
+            # date.
+            return BillInstance(
+                bill_id=self.bill_id,
+                service=self.service,
+                due_date=current_date,
+                amount_due=self.amount_due
+            )
+    
+    def _due_dates_in_range(
+        self, start_reference: datetime.date, end_reference: datetime.date
+    ) -> list[datetime.date]:
+        """
+        Generate all due dates for this bill within a specified date range.
+        
+        This method generates the complete sequence of due dates starting from the
+        bill's start_date, then filters to return only those within the specified
+        range. This handles cases where start_reference is not itself a due date.
+        
+        Parameters
+        ----------
+        start_reference : datetime.date
+            The start of the date range (inclusive). Can be any date.
+        end_reference : datetime.date
+            The end of the date range (inclusive). Can be any date.
+            
+        Returns
+        -------
+        list[datetime.date]
+            A sorted list of all due dates within [start_reference, end_reference].
+            Returns empty list if no due dates fall within the range.
+        """
+
+        # If the bill is not recurring, then we can just return the
+        # due date.
+        if not self.recurring:
+            return [self.start_date]
+        
+        # If the bill is recurring, then we need to generate all due
+        # dates in the range.
+
+        # Initialize the list of due dates.
+        due_dates = []
+
+        # If the end reference is before the bill's start date, then
+        # there are no due dates in the range.
+        if end_reference < self.start_date:
+            return []
+        
+        # If the start reference is after the bill's end date, then
+        # there are no due dates in the range.
+        if self.end_date is not None and start_reference > self.end_date:
+            return []
+        
+        # Determine the effective start and end dates to begin
+        # generating due dates. We cannot exceed the end date.
+        current_due_date = self.start_date
+
+        if self.end_date is not None:
+            end_reference = min(end_reference, self.end_date)
+        
+        # Generate all due dates from start_date until we exceed
+        # end_reference.
+        while current_due_date <= end_reference:
+
+            # Only include dates that fall within our requested range.
+            if start_reference <= current_due_date <= end_reference:
+                due_dates.append(current_due_date)
+            
+            # Move to the next due date in the sequence.
+            current_due_date = self._next_due_date(current_due_date)
+        
+        return due_dates
+
+    def _next_due_date(self, curr_due_date: datetime.date) -> datetime.date:
+        """
+        Calculate the next due date after the current due date,
+        following the bill's frequency and interval.
+        
+        Parameters
+        ----------
+        curr_due_date: datetime.date
+            The current due date. This must be a valid due date for a
+            bill.
+            
+        Returns
+        -------
+        datetime.date
+            The next due date.
+        """
+
+        # This function needs code to validate the current due date,
+        # otherwise, it's just a function that increments the date by
+        # the interval.
+
+        next_due_date = self._increment_date(
+            reference_date=curr_due_date,
+            frequency=self.frequency,
+            interval=self.interval
+        )
+        
+        return next_due_date
+
+    def _calculate_occurrences_in_range(
+        self, start_date: datetime.date, end_date: datetime.date, 
+        frequency: str, interval: int
+    ) -> int:
+        """
+        Calculate the number of occurrences between start_date and
+        end_date (inclusive).
+        
+        Parameters
+        ----------
+        start_date : datetime.date
+            The first due date.
+        end_date : datetime.date  
+            The last possible due date.
+        frequency : str
+            The frequency ('daily', 'weekly', 'monthly', etc.).
+        interval : int
+            The interval between occurrences.
+            
+        Returns
+        -------
+        int
+            The number of occurrences that fit in the range.
+        """
+        
+        # Initialize the number of occurrences.
+        occurrences = 0
+
+        # Initialize the current date.
+        current_date = start_date
+        
+        # Count occurrences by stepping through the sequence.
+        while current_date <= end_date:
+
+            # Increment the number of occurrences.
+            occurrences += 1
+
+            # Get the next due date using existing logic.
+            current_date = self._increment_date(
+                reference_date=current_date, frequency=frequency,
+                interval=interval, num_intervals=1
+            )
+        
+        return occurrences
+    
+    def _increment_date(
+        self, reference_date: datetime.date, frequency: str, interval: int,
+        num_intervals: int=1
+    ) -> datetime.date:
+        """
+        Increment the date by the interval in the given frequency.
+        
         Parameters
         ----------
         reference_date: datetime.date
             The reference date.
-        return_last: bool
-            Whether to return the last instance of the bill.
-
-        Returns
-        -------
-        BillInstance | None
-            The next instance of the bill or None if the bill is not
-            recurring and the reference date is before the due date or
-            after the end date.
-        """
-
-        # If the bill is recurring:
-        # 
-        # 1. Check if the passed reference date is before the recurring
-        # bill's end date. If it is, then the bill does not have a next
-        # instance. In this case, the user chooses whether to return the
-        # last instance or None.
-        # 
-        # 2. If the recurring bill's start date is before the reference
-        # date, then the next instance is the first instance. The first
-        # instance is due on the recurring bill's start date.
-        # 
-        # 3. Otherwise, we need to build the list of due dates until the
-        # reference date, then get the next due date. If the next due
-        # date is after the end date, then the bill does not have a next
-        # instance and we are back to the user's choice of returning the
-        # last instance or None.
-        # 
-        # If the bill is not recurring:
-        # 
-        # 1. If the reference date is after the due date, then the bill
-        # does not have a next instance. In that case, the user decides
-        # whether to return the last instance or None.
-        # 
-        # 2. If the reference date is before or on the due date, then
-        # the  only instance is the due date. Return the instance with
-        # the due date.
-
-        ################################################################
-        ## RECURRING BILLS
-        ################################################################
-
-        if self.recurring == True:
-
-            # 1. If the bill is recurring and an end date was set.
-            if self.end_date is not None and reference_date > self.end_date:
-                
-                # If the users wants the last instance, then we need to
-                # find the last instance.
-                if return_last == True:
-                    last_date = self.start_date
-                    next_date = self._next_due_date(last_date)
-
-                    while next_date <= self.end_date:
-                        last_date = next_date
-                        next_date = self._next_due_date(last_date)
-
-                    return BillInstance(
-                        bill_id=self.bill_id,
-                        service=self.service,
-                        due_date=last_date,
-                        amount_due=self.amount_due
-                    )
-                else:
-                    return None
-            
-            # 2. If the bill is recurring and the reference date is
-            # before or on the start date.
-            elif reference_date <= self.start_date:
-                return BillInstance(
-                    bill_id=self.bill_id,
-                    service=self.service,
-                    due_date=self.start_date,
-                    amount_due=self.amount_due
-                )
-            
-            # 3. Otherwise, we need to build the list of due dates until
-            # the reference date, then get the next due date.
-            else:
-                current_date = self.start_date
-                prev_date = None
-
-                while current_date <= reference_date:
-                    prev_date = current_date
-                    current_date = self._next_due_date(current_date)
-
-                # Re-check if the found date is after the end date. If
-                # the user wants the last instance, then return the
-                # previous instance, which is the last valid instance.
-                # Otherwise, return None.
-                if self.end_date is not None and current_date > self.end_date:
-                    if return_last == True:
-                        return BillInstance(
-                            bill_id=self.bill_id,
-                            service=self.service,
-                            due_date=prev_date,
-                            amount_due=self.amount_due
-                        )
-                    else:
-                        return None
-                
-                # Otherwise, return the next due date.
-                return BillInstance(
-                    bill_id=self.bill_id,
-                    service=self.service,
-                    due_date=current_date,
-                    amount_due=self.amount_due
-                )
-
-        ################################################################
-        ## NON-RECURRING BILLS
-        ################################################################
-
-        elif self.recurring == False:
-            if (
-                (reference_date > self.due_date and return_last) or
-                (reference_date <= self.due_date)
-            ):
-                return BillInstance(
-                    bill_id=self.bill_id,
-                    service=self.service,
-                    due_date=self.due_date,
-                    amount_due=self.amount_due
-                )
-            else:
-                return None
-
-    def _next_due_date(self, date: datetime.date) -> datetime.date:
-        """
-        Calculate the next due date after the given date.
-        
-        Parameters
-        ----------
-        date: datetime.date
-            The reference date.
+        frequency: str
+            The frequency of the bill. For example, 'monthly',
+            'quarterly', 'annual', etc.
+        interval: int
+            The interval of the bill. For example, if the bill is
+            bi-weekly, the interval is 2 and the frequency is weekly.
+            If the bill is monthly, the interval is 1 and the frequency
+            is monthly.
             
         Returns
         -------
@@ -311,49 +464,64 @@ class Bill:
         # the next occurance lands on the same day of the year as the
         # start date. The *only* exception is if the start date is
         # February 29. In that case, the next due date is February 28.
-        if self.frequency.lower() == 'daily':
 
-            next_due_date = date + datetime.timedelta(days=self.interval)
+        # Calculate the effective increment (or interval) based on the
+        # interval and the number of occurrences you want to jump to.
+        effective_interval = interval * num_intervals
 
-            return next_due_date
+        if frequency.lower() == 'daily':
 
-        elif self.frequency.lower() == 'weekly':
-
-            # The next due date is the start date plus the interval
-            # times 7 days.
-            next_due_date = date + datetime.timedelta(days=7 * self.interval)
-
-            return next_due_date
-
-        elif self.frequency.lower() == 'monthly':
-
-            next_due_date = self._increment_monthly(
-                date, num_months=self.interval
+            next_due_date = (
+                reference_date + datetime.timedelta(days=effective_interval)
             )
 
             return next_due_date
 
-        elif self.frequency.lower() == 'quarterly':
+        elif frequency.lower() == 'weekly':
+
+            # The next due date is the start date plus the interval
+            # times 7 days.
+            next_due_date = (
+                reference_date + (
+                    datetime.timedelta(days=7 * effective_interval)
+                )
+            )
+
+            return next_due_date
+
+        elif frequency.lower() == 'monthly':
 
             next_due_date = self._increment_monthly(
-                date, num_months=3 * self.interval
+                reference_date, num_months=effective_interval
+            )
+
+            return next_due_date
+
+        elif frequency.lower() == 'quarterly':
+
+            next_due_date = self._increment_monthly(
+                reference_date, num_months=3 * effective_interval
             )
             
             return next_due_date
 
-        elif self.frequency.lower() == 'annual':
+        elif frequency.lower() == 'annual':
 
             # Simply replace the date by incrementing the date by the
             # interval. This accomplishes the goal of landing on the
             # same day of the year as the start date. Otherwise, control
             # for leap years.
             try:
-                return date.replace(year=date.year + self.interval)
+                return reference_date.replace(
+                    year=reference_date.year + effective_interval
+                )
             except ValueError:
-                return date.replace(year=date.year + self.interval, day=28)
+                return reference_date.replace(
+                    year=reference_date.year + effective_interval, day=28
+                )
         else:
-            raise ValueError(f"Unknown frequency: {self.frequency}")
-    
+            raise ValueError(f"Unknown frequency: {frequency}")
+        
     def _increment_monthly(
         self, date: datetime.date, num_months: int=1
     ) -> datetime.date:
