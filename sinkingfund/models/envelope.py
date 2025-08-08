@@ -46,16 +46,13 @@ bills for each expense in your sinking fund strategy.
 
 import datetime
 
-from dataclasses import dataclass
-
-from .bills import Bill, BillInstance
+from .bills import BillInstance
 from .cash_flow import CashFlow
 
 ########################################################################
 ## ENVELOPE MODEL
 ########################################################################
 
-@dataclass
 class Envelope:
     """
     An envelope is a financial tool that represents a pool of money
@@ -63,67 +60,153 @@ class Envelope:
 
     Parameters
     ----------
-    bill: Bill
-        The bill that the envelope is for.
-    contrib_interval: int
-        The interval over which contributions are made to the envelope
-        towards paying off the bill.
+    bill: BillInstance
+        The bill instance that the envelope is for.
+    allocated: float
+        The amount allocated to the bill. Set during allocation of
+        existing account balance.
 
     Attributes
     ----------
-    bill: Bill
-        The bill that the envelope is for.
-    interval: int
-        The interval over which contributions are made to the envelope
-        towards paying off the bill.
-    remaining: float
-        The remaining amount due on the bill. Set during allocation of
-        existing account balance.
+    bill: BillInstance
+        The bill instance that the envelope is for.
     allocated: float
         The amount allocated to the bill. Set during allocation of
+        existing account balance.
+    remaining: float
+        The remaining amount due on the bill. Set during allocation of
         existing account balance.
     schedule: list[CashFlow]
         The schedule of contributions and payouts (cash flows) towards
         the bill.
     """
 
-    bill: Bill
-    remaining: float
-    allocated: float=0
-    interval: int=1
-    schedule: list[CashFlow] | None=None
-
-    def next_instance(
-        self, reference_date: datetime.date, inclusive: bool=False
-    ) -> BillInstance | None:
+    def __init__(self, bill: BillInstance, allocated: float=0.0):
         """
-        Get the next instance of the bill. This method extends the
-        `Bill.next_instance` method by making a correction for the
-        amount allocated to the bill.
-
-        Parameters
-        ----------
-        reference_date: datetime.date
-            The date to get the next instance of the bill.
-        inclusive: bool
-            If True, includes bills due exactly on the reference date.
-            If False, only returns bills due after the reference date.
-
-        Returns
-        -------
-        BillInstance | None
-            The next instance of the bill.
+        Initialize the envelope.
         """
 
-        # 1. Get the next instance of the bill.
-        bill_instance = self.bill.next_instance(
-            reference_date=reference_date, inclusive=inclusive
+        self.bill = bill
+        self.allocated = allocated
+        self.schedule: list[CashFlow] = []
+
+        # BUSINESS LOGIC: The remaining amount due on the bill is the
+        # amount due minus the amount allocated. This is the amount
+        # that needs to be paid off by the envelope.
+        self.remaining = bill.amount_due - allocated
+
+    def total_sched_contribs(self) -> float:
+        """
+        Calculate the total contributions made to the envelope.
+        """
+
+        total_contributions = sum(
+            cash_flow.amount for cash_flow in self.schedule
+            if cash_flow.amount > 0
         )
 
-        # 2. If there is a next instance, and a balance was allocated
-        # to the bill, then we need to subtract that from the amount
-        # due. This is stored in the `remaining` attribute.
-        if bill_instance is not None and self.remaining is not None:
-            bill_instance.amount_due = self.remaining
+        return total_contributions
+    
+    def total_sched_bill_payments(self) -> float:
+        """
+        Calculate the total payouts made from the envelope.
+        """
 
-        return bill_instance
+        total_payouts = sum(
+            cash_flow.amount for cash_flow in self.schedule
+            if cash_flow.amount < 0
+        )
+
+        return total_payouts
+    
+    def first_sched_contribs(self) -> CashFlow | None:
+        """
+        Get the first contribution made to the envelope.
+        """
+
+        first_contrib = min([
+            cash_flow.date for cash_flow in self.schedule
+            if cash_flow.amount > 0
+        ])
+
+        return first_contrib
+    
+    def last_sched_contribs(self) -> CashFlow | None:
+        """
+        Get the last contribution made to the envelope.
+        """
+
+        last_contrib = max([
+            cash_flow.date for cash_flow in self.schedule
+            if cash_flow.amount > 0
+        ])
+
+        return last_contrib
+    
+    def first_sched_bill_payments(self) -> CashFlow | None:
+        """
+        Get the first payout made from the envelope.
+        """
+
+        first_payout = min([
+            cash_flow.date for cash_flow in self.schedule
+            if cash_flow.amount < 0
+        ])
+
+        return first_payout
+    
+    def last_sched_bill_payments(self) -> CashFlow | None:
+        """
+        Get the last payout made from the envelope.
+        """
+
+        last_payout = max([
+            cash_flow.date for cash_flow in self.schedule
+            if cash_flow.amount < 0
+        ])
+
+        return last_payout
+
+    def get_sched_contribs(
+        self, start_reference: datetime.date, end_reference: datetime.date
+    ) -> list[CashFlow]:
+        """
+        Get the contributions for the envelope.
+        """
+
+        contribs = [
+            cash_flow for cash_flow in self.schedule
+            if cash_flow.amount > 0
+            and start_reference <= cash_flow.date <= end_reference
+        ]
+
+        return contribs
+    
+    def get_sched_bill_payments(
+        self, start_reference: datetime.date, end_reference: datetime.date
+    ) -> list[CashFlow]:
+        """
+        Get the bill payments for the envelope.
+        """
+
+        bill_payments = [
+            cash_flow for cash_flow in self.schedule
+            if cash_flow.amount < 0
+            and start_reference <= cash_flow.date <= end_reference
+        ]
+        
+        return bill_payments
+
+    def get_sched_cash_flows(
+        self, start_reference: datetime.date, end_reference: datetime.date
+    ) -> list[CashFlow]:
+        """
+        Get the cash flows for the envelope.
+        """
+
+        cash_flows = [
+            cash_flow for cash_flow in self.schedule
+            if start_reference <= cash_flow.date <= end_reference
+        ]
+
+        return cash_flows
