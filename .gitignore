@@ -166,3 +166,4 @@ cython_debug/
 data/*
 logs/*
 examples/test.ipynb
+_archive/
