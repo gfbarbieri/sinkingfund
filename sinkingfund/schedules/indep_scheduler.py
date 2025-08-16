@@ -121,11 +121,14 @@ Example
 ## IMPORTS
 ########################################################################
 
+from __future__ import annotations
+
 import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 from .base import BaseScheduler
-from ..models.cash_flow import CashFlow
-from ..models.envelope import Envelope
+from ..models import Envelope, CashFlow, CashFlowSchedule
+from ..utils import increment_date
 
 ########################################################################
 ## INDEPENDENT SCHEDULER
@@ -186,9 +189,7 @@ class IndependentScheduler(BaseScheduler):
     def __init__(self):
         pass
     
-    def schedule(
-            self, envelopes: list[Envelope], start_date: datetime.date
-        ) -> None:
+    def schedule(self, envelopes: list[Envelope]) -> None:
         """
         Create evenly distributed contribution schedules for each
         envelope independently.
@@ -219,17 +220,12 @@ class IndependentScheduler(BaseScheduler):
             The envelopes to create contribution schedules for. Each
             envelope should have a valid bill and a defined contribution
             interval.
-            
-        start_date : datetime.date
-            The date to begin the contribution schedule. This serves as
-            the reference point for all timing calculations and the date
-            of the first contribution.
         
         Returns
         -------
         None
             The method modifies the provided envelopes in-place by
-            setting their schedule attribute with the calculated cash
+            setting their schedule attribute with the optimized cash
             flows.
         
         Notes
@@ -237,110 +233,111 @@ class IndependentScheduler(BaseScheduler):
         * Envelopes without a valid next bill instance are skipped.
         * The schedule handles partial intervals at the end of the
         period.
-        * Rounding differences are added to the first contribution.
+        * Rounding differences are added to the last contribution to
+        ensure exact funding.
         * A negative cash flow equal to the bill amount is added on the
         due date.
         """
 
-        cash_flows = []
-
         for envelope in envelopes:
+            
+            # BUSINESS GOAL: Create predictable, even contribution
+            # schedules for each bill to help users budget
+            # consistently.
+            envelope.schedule = CashFlowSchedule()
 
-            # For each envelope, get the next instance of the bill.
-            bill = envelope.bill.next_instance(reference_date=start_date)
-
-            # Skip over envelopes that do not have a next instance of
-            # the bill. This occurs if bills are listed in envelopes
-            # that do not have a next instance at the current date.
-            if bill is None:
-                continue
-
-            # Calculate the number of intervals between the current
-            # date and the due date. Intervals are the number of days
-            # between cash flows.
-            # intervals = sorted(self.calculate_intervals(
-            #     start_date=start_date, end_date=bill.due_date,
-            #     interval=envelope.interval
-            # ))
-            intervals = self.calculate_intervals(
-                start_date=start_date, end_date=bill.due_date,
-                interval=envelope.interval
+            # DESIGN CHOICE: Calculate remaining amount as of the start
+            # contribution date to account for any existing allocation.
+            remaining = envelope.remaining(
+                as_of_date=envelope.start_contrib_date
             )
 
             # Calculate the cash flow required to pay off the bill in
             # the given time frame.
-            daily_contrib = self.daily_contribution(
-                remaining=envelope.remaining, due_date=bill.due_date,
-                curr_date=start_date
+            daily_contrib = self.calculate_daily_contribution(
+                remaining=remaining,
+                due_date=envelope.bill_instance.due_date,
+                curr_date=envelope.start_contrib_date,
             )
 
-            # The interval contribution is the daily contribution
-            # multiplied by the interval.
-            interval_contrib = [
-                (interval, interval * daily_contrib) for interval in intervals
+            # Break down the time period into contribution intervals
+            # based on the envelope's preferred frequency.
+            contrib_intervals = self.calculate_contribution_intervals(
+                start_date=envelope.start_contrib_date,
+                end_date=envelope.end_contrib_date,
+                interval=envelope.contrib_interval
+            )
+
+            # The contribution at each interval is the daily
+            # contribution times the interval.
+            contrib_amounts = [
+                (
+                    interval, 
+                    (daily_contrib * interval).quantize(
+                        Decimal("0.01"), rounding=ROUND_HALF_UP
+                    )
+                )
+                for interval in contrib_intervals
             ]
 
-            # Determine if the total number of contributions is equal
-            # to the amount due. If there is any difference, we are
-            # going to add it to the first contribution made. This is
-            # an arbitrary decision, but it is a way to ensure that the
-            # total amount contributed is equal to the amount due.
-            diff = (
-                envelope.remaining -
-                sum(contrib[1] for contrib in interval_contrib)
+            # BUSINESS GOAL: Ensure exact funding by adjusting for
+            # rounding differences. Any pennies lost to rounding are
+            # added to the last contribution.
+            diff = remaining - sum(
+                contrib[1] for contrib in contrib_amounts
             )
 
-            # Create the full cash flow schedule, including
-            # contributions and payouts. The due date of the
-            # contribution is the current date plus the interval. The
-            # current date is a datetime.date object, so we need to add
-            # the interval to it as a timedelta.
+            # DESIGN CHOICE: Add difference to the last contribution
+            # rather than the first to maintain consistent early
+            # payments.
+            contrib_amounts[-1] = (
+                contrib_amounts[-1][0], contrib_amounts[-1][1] + diff
+            )
+
+            # Create the contribution cash flows based on the calculated
+            # amounts and timing.
             cash_flows = []
-            current_date = start_date
+            
+            curr_date = envelope.start_contrib_date
 
-            for i, (days, amount) in enumerate(interval_contrib):
+            for interval, amount in contrib_amounts:
 
-                # If there is any difference, add it to the first
-                # contribution.
-                amount = round(amount + (diff if i == 0 else 0), 2)
+                # PERFORMANCE: Only create cash flows for positive
+                # amounts to avoid unnecessary zero-value entries.
+                if amount > Decimal("0.00"):
+                    cash_flow = CashFlow(
+                        bill_id=envelope.bill_instance.bill_id,
+                        date=curr_date,
+                        amount=amount
+                    )
+                    cash_flows.append(cash_flow)
 
-                # If the amount is zero, then do not add a cash flow.
-                # It is possible to do this before this loop because
-                # we know the daily contribution is zero.
-                if amount == 0:
-                    continue
-
-                # Update the date using the actual interval size for
-                # this period. current_date is already set to start_date
-                # for the first iteration
-                if i > 0:
-                    current_date = current_date + datetime.timedelta(days=days)
-
-                # Create the contribution.
-                cash_flow = CashFlow(
-                    bill_id=bill.bill_id, date=current_date, amount=amount
+                # Move to the next contribution date.
+                curr_date = increment_date(
+                    reference_date=curr_date, frequency='daily',
+                    interval=interval, num_intervals=1
                 )
 
-                # Add the contribution to the list of contributions.
-                cash_flows.append(cash_flow)
-
-            # Add the total amount due to the list of cash flows.
+            # BUSINESS GOAL: Add the bill payment as a negative cash
+            # flow to complete the envelope lifecycle.
             cash_flows.append(
                 CashFlow(
-                    bill_id=bill.bill_id, date=bill.due_date,
-                    amount=-envelope.bill.amount_due
+                    bill_id=envelope.bill_instance.bill_id,
+                    date=envelope.bill_instance.due_date,
+                    amount=-envelope.bill_instance.amount_due
                 )
             )
 
-            # Set the schedule of cash flows.
-            envelope.schedule = cash_flows
+            # SIDE EFFECTS: Modify the envelope in-place by setting its
+            # schedule.
+            envelope.schedule.add_cash_flows(cash_flows)
 
-    def daily_contribution(
+    def calculate_daily_contribution(
             self,
-            remaining: float,
+            remaining: Decimal,
             due_date: datetime.date,
             curr_date: datetime.date
-        ) -> float:
+        ) -> Decimal:
         """
         Calculate the daily contribution amount needed to fully fund a
         bill by its due date.
@@ -356,7 +353,7 @@ class IndependentScheduler(BaseScheduler):
         
         Parameters
         ----------
-        remaining : float
+        remaining : Decimal
             The remaining amount needed to fully fund the bill. This
             represents the difference between the bill amount and any
             existing allocation.
@@ -371,11 +368,10 @@ class IndependentScheduler(BaseScheduler):
         
         Returns
         -------
-        float
-            The calculated daily contribution amount rounded to two
-            decimal places. If the bill is already due (due_date <=
-            curr_date), returns either the remaining amount (if on due
-            date) or zero (if past due).
+        Decimal
+            The calculated daily contribution amount. If the bill is
+            already due (due_date <= curr_date), returns either the
+            remaining amount (if on due date) or zero (if past due).
         
         Notes
         -----
@@ -387,27 +383,19 @@ class IndependentScheduler(BaseScheduler):
         contributions across the available time period.
         """
 
-        # If the bill is due before the current date, then the bill is
-        # in the past and we will treat it as if it has already been
-        # paid, thus the daily savings is zero.
-        # 
-        # Otherwise, calculate the number of days remaining until the
-        # bill is due.
-        days_remaining = max(0, (due_date - curr_date).days)
-        
-        # Calculate the daily savings for the bill. Round to 2 decimal
-        # places to reflect the fact that we are dealing with dollars
-        # and avoid floating point precision issues. If the number of
-        # days remaining is zero, then the daily savings is the
-        # remaining amount.
-        if days_remaining == 0:
+        # BUSINESS GOAL: Calculate how much must be saved daily to
+        # fully fund the bill by its due date.
+        days_remaining = (due_date - curr_date).days
+
+        # EDGE CASE: Handle bills that are due today or past due.
+        if days_remaining <= 0:
             contribution = remaining
         else:
-            contribution = round(remaining / days_remaining, 2)
+            contribution = remaining / days_remaining
 
         return contribution
-
-    def calculate_intervals(
+    
+    def calculate_contribution_intervals(
             self, start_date: datetime.date, end_date: datetime.date,
             interval: int
         ) -> list[int]:
@@ -458,114 +446,25 @@ class IndependentScheduler(BaseScheduler):
         the bill is fully funded by the due date.
         
         """
-        # Calculate the number of days between the start and end dates.
+
+        # BUSINESS GOAL: Break the time period into manageable
+        # contribution intervals that respect the user's preferred
+        # payment frequency.
         num_days = (end_date - start_date).days
 
-        # Build the intervals as a list of full intervals plus any
-        # remaining days as a partial interval. Integer division is used
-        # to get the number of full intervals, and the modulo operator
-        # is used to get the remaining days, if any.
+        # DESIGN CHOICE: Build the intervals as a list of full intervals
+        # plus any remaining days as a partial interval. Integer
+        # division is used to get the number of full intervals, and the
+        # modulo operator is used to get the remaining days, if any.
         full_intervals = num_days // interval
         remaining_days = num_days % interval
         
-        # Build the list of intervals and add the remaining interval if
-        # there are any remaining days.
+        # PERFORMANCE: Pre-allocate the list for efficiency.
         intervals = [interval] * full_intervals
 
+        # BUSINESS GOAL: Include partial intervals to ensure complete
+        # coverage of the time period.
         if remaining_days > 0:
             intervals.append(remaining_days)
 
         return intervals
-    
-    def aggregate_cash_flows(
-        self, cash_flows: list[CashFlow], start_date: datetime.date,
-        interval: int
-    ) -> list[CashFlow]:
-        """
-        Aggregate cash flows into a single cash flow per interval
-        period. This is done by summing up all contributions for each
-        interval period and creating a single cash flow for the total
-        amount in that interval.
-
-        Parameters
-        ----------
-        cash_flows : list
-            List of CashFlow objects.
-        start_date : datetime.date
-            Start date.
-        interval : int
-            Contribution interval in days.
-
-        Returns
-        -------
-        list
-            List of CashFlow objects.
-        """
-
-        # Initialize dictionary to track total contributions per
-        # interval period.
-        int_contribs = {}
-        bill_id = cash_flows[0].bill_id
-
-        # Step 1: Sum up all contributions by interval period.
-        #
-        # The first interval has index 0, the second has index 1, etc.
-        # They represent the number of days since the start date. If
-        # the interval is 14 days, interval index 0 is the first 14 day
-        # period, interval index 1 is the second 14 day period, etc.
-        # When the loop is done, interval_contributions will have a key
-        # for each interval index, and the value will be the total
-        # contribution for that interval. The interval index tells us
-        # that it belongs to the interval index-th interval, regardless
-        # of the exact date of the contribution.
-        for cf in cash_flows:
-
-            # Calculate days since start date.
-            days_since_start = (cf.date - start_date).days
-            
-            # Determine to which interval period this contribution
-            # belongs. The integer division by the interval length
-            # gives the index of the interval, which is enough to
-            # determine which interval the contribution belongs to.
-            int_idx = days_since_start // interval
-            
-            # Add this contribution to the interval sum. Initialize to 0
-            # if this is the first contribution to this interval.
-            if int_idx not in int_contribs:
-                int_contribs[int_idx] = 0
-
-            # Add the contribution to the interval's total.
-            int_contribs[int_idx] += cf.amount
-
-        # Step 2: Create one aggregated cash flow per interval period.
-        agg_flows = []
-
-        for int_idx, total_amount in sorted(int_contribs.items()):
-
-            # Calculate the date for this interval. This approach puts
-            # all contributions on the first day of the interval. This
-            # avoids complications with partial intervals, but comes
-            # at the cost of paying off the bill earlier than the due
-            # date by the contribution interval size.
-            int_date = (
-                start_date + datetime.timedelta(days=int_idx * interval)
-            )
-
-            # Create a single cash flow for the total amount in this
-            # interval. If the total amount is negative, we do not add
-            # a cash flow because it means that the bill is paid off.
-            if total_amount > 0:
-
-                # Create the cash flow object. We round the amount to 2
-                # decimal places to avoid floating point precision
-                # issues. However, this is not a perfect solution, and
-                # can lead to errors in the sum of the contributions.
-                agg_flows.append(
-                    CashFlow(
-                        bill_id=bill_id,
-                        date=int_date,
-                        amount=round(total_amount, 2)
-                    )
-                )
-
-        return agg_flows
