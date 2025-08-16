@@ -55,10 +55,9 @@ Custom Weighting
 
 import datetime
 
-from typing import Protocol
+from typing import Any, Protocol
 
 from .base import BaseAllocator
-from ..models.bills import BillInstance
 from ..models.envelope import Envelope
 
 ########################################################################
@@ -70,28 +69,26 @@ class WeightFunction(Protocol):
     Protocol defining the interface for weight calculation functions.
     
     A weight function must:
-    1. Accept a list of BillInstance objects and a datetime.date.
+    1. Accept a list of Envelope objects and a datetime.date.
     2. Return a list of float values (weights).
-    3. Return weights in the same order as the input bill instances.
+    3. Return weights in the same order as the input envelopes.
     """
 
     def __call__(
-            self, bill_instances: list[BillInstance], curr_date: datetime.date
+            self, envelopes: list[Envelope], **kwargs: Any
         ) -> list[float]:
         """
-        Calculate weights for a list of bill instances.
+        Calculate weights for a list of envelopes.
         
         Parameters
         ----------
-        bill_instances: list[BillInstance]
-            List of bill instances to calculate weights for.
-        curr_date: datetime.date
-            Current date for calculating urgency-based weights.
+        envelopes: list[Envelope]
+            List of envelopes to calculate weights for.
             
         Returns
         -------
         list[float]
-            List of weights, one per bill instance in the same order.
+            List of weights, one per envelope in the same order.
         """
         ...  # This is a placeholder for the actual implementation.
 
@@ -104,7 +101,7 @@ class ProportionalAllocator(BaseAllocator):
     Allocates funds based on weighted proportions of bill instances.
     """
     
-    def __init__(self, method: str | WeightFunction):
+    def __init__(self, method: str | WeightFunction) -> None:
         """
         Initialize the proportional allocator.
 
@@ -129,8 +126,7 @@ class ProportionalAllocator(BaseAllocator):
             self.weight_func = method
     
     def allocate(
-            self, envelopes: list[Envelope], balance: float,
-            curr_date: datetime.date
+            self, envelopes: list[Envelope], balance: float, **kwargs: Any
         ) -> None:
         """
         Allocate balance to envelopes based on calculated weights.
@@ -141,17 +137,10 @@ class ProportionalAllocator(BaseAllocator):
             The envelopes to allocate to.
         balance: float
             The balance to allocate.
-        curr_date: datetime.date
-            The current date.
         """
 
-        # For each envelope, get the next instance of the bill.
-        bill_instances = [
-            envelope.bill.next_instance(curr_date) for envelope in envelopes
-        ]
-
         # Calculate the weights for each envelope.
-        weights = self.weight_func(bill_instances, curr_date)
+        weights = self.weight_func(envelopes, **kwargs)
 
         # Calculate the shares of the balance for each envelope.
         shares = [weight / sum(weights) for weight in weights]
@@ -161,11 +150,10 @@ class ProportionalAllocator(BaseAllocator):
 
         # Set the allocations for each envelope.
         for envelope, allocation in zip(envelopes, allocations):
-            envelope.allocated = allocation
-            envelope.remaining = envelope.bill.amount_due - envelope.allocated
+            envelope.initial_allocation = allocation
         
     def _urgency_weights(
-            self, bill_instances: list[BillInstance], curr_date: datetime.date
+            self, envelopes: list[Envelope], curr_date: datetime.date
         ) -> list[float]:
         """
         Weight based on amount and urgency (less days = higher weight).
@@ -174,8 +162,8 @@ class ProportionalAllocator(BaseAllocator):
 
         Parameters
         ----------
-        bill_instances: list[BillInstance]
-            The bill instances for which to calculate the weights.
+        envelopes: list[Envelope]
+            The envelopes for which to calculate the weights.
         curr_date: datetime.date
             The current date.
         """
@@ -183,11 +171,11 @@ class ProportionalAllocator(BaseAllocator):
         # Calculate the weights for each envelope.
         weights = []
 
-        for bill in bill_instances:
+        for envelope in envelopes:
 
             # Calculate the number of days between the due date and the
             # current date.
-            days = (bill.due_date - curr_date).days
+            days = (envelope.bill_instance.due_date - curr_date).days
 
             # If the bill is due before the current date, then the bill
             # is in the past and we will treat it as if it has already
@@ -195,9 +183,9 @@ class ProportionalAllocator(BaseAllocator):
             if days < 0:
                 weight = 0
             elif days == 0:
-                weight = bill.amount_due
+                weight = envelope.bill_instance.amount_due
             else:
-                weight = bill.amount_due / days
+                weight = envelope.bill_instance.amount_due / days
 
             # Append the weight to the list.
             weights.append(weight)
@@ -205,24 +193,24 @@ class ProportionalAllocator(BaseAllocator):
         return weights
         
     def _equal_weights(
-            self, bill_instances: list[BillInstance], curr_date: datetime.date
+            self, envelopes: list[Envelope]
         ) -> list[float]:
         """
         Equal weight for all bills.
 
         Parameters
         ----------
-        bill_instances: list[BillInstance]
-            The bill instances to calculate the weight for.
+        envelopes: list[Envelope]
+            The envelopes to calculate the weight for.
         """
 
         # Calculate the weights for each envelope as 1.0.
-        weights = [1.0] * len(bill_instances)
+        weights = [1.0] * len(envelopes)
 
         return weights
         
     def _proportional_weights(
-            self, bill_instances: list[BillInstance], curr_date: datetime.date
+            self, envelopes: list[Envelope]
         ) -> list[float]:
         """
         Weight based solely on bill amount.
@@ -231,33 +219,36 @@ class ProportionalAllocator(BaseAllocator):
 
         Parameters
         ----------
-        bill_instances: list[BillInstance]
-            The bill instances to calculate the weight for.
+        envelopes: list[Envelope]
+            The envelopes to calculate the weight for.
         """
 
         # Calculate the total amount due for all envelopes.
-        total_amount_due = sum(bill.amount_due for bill in bill_instances)
+        total_amount_due = sum(
+            envelope.bill_instance.amount_due for envelope in envelopes
+        )
 
         # Calculate the weights for each envelope.
         weights = [
-            bill.amount_due / total_amount_due for bill in bill_instances
+            envelope.bill_instance.amount_due / total_amount_due
+            for envelope in envelopes
         ]
 
         return weights
         
     def _zero_weights(
-            self, bill_instances: list[BillInstance], curr_date: datetime.date
+            self, envelopes: list[Envelope]
         ) -> list[float]:
         """
         Set all weights to zero.
 
         Parameters
         ----------
-        bill_instances: list[BillInstance]
-            The bill instances to calculate the weight for.
+        envelopes: list[Envelope]
+            The envelopes to calculate the weight for.
         """
 
         # Calculate the weights for each envelope as 0.0.
-        weights = [0.0] * len(bill_instances)
+        weights = [0.0] * len(envelopes)
 
         return weights

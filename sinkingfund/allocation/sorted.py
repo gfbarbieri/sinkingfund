@@ -39,13 +39,12 @@ due date.
 ## IMPORTS
 ########################################################################
 
-import datetime
-
-from typing import Optional, Protocol, Any
+from typing import Any, Protocol
 
 from .base import BaseAllocator
-from ..models.bills import BillInstance
-from ..models.envelope import Envelope
+
+from ..models import BillInstance
+from ..models import Envelope
 
 ########################################################################
 ## TYPES
@@ -137,8 +136,8 @@ class SortKey(Protocol):
 # is a function that takes an bill instance and returns a value
 # that will be used to sort the envelopes.
 SORT_KEYS = {
-    "cascade": lambda e: e.due_date,
-    "debt_snowball": lambda e: e.amount_due
+    "cascade": lambda e: e.bill_instance.due_date,
+    "debt_snowball": lambda e: e.bill_instance.amount_due
 }
 
 ########################################################################
@@ -170,16 +169,13 @@ class SortedAllocator(BaseAllocator):
         Default: False
     """
 
-    def __init__(
-            self, sort_key: str | Optional[SortKey] = None,
-            reverse: bool = False
-        ) -> None:
+    def __init__(self, sort_key: str | SortKey, reverse: bool=False) -> None:
         """
         Initialize the sorted allocator.
 
         Parameters
         ----------
-        sort_key: Optional[SortKey]
+        sort_key: str | SortKey
             Function to extract sort key from envelope.
             Default: Sort by due date (lambda e: e.bill.due_date)
         reverse: bool
@@ -200,13 +196,11 @@ class SortedAllocator(BaseAllocator):
         self.reverse = reverse
 
     def allocate(
-            self, envelopes: list[Envelope], balance: float,
-            curr_date: datetime.date, return_last: bool = False,
-            **kwargs: Any
-        ) -> list[Envelope]:
+            self, envelopes: list[Envelope], balance: float, **kwargs: Any
+        ) -> None:
         """
         Allocate the balance to the envelopes. Updates the envelopes
-        directly with the allocated amount and the remaining amount
+        in place with the allocated amount and the remaining amount
         needed.
 
         Parameters
@@ -215,72 +209,30 @@ class SortedAllocator(BaseAllocator):
             The envelopes to allocate the balance to.
         balance: float
             The current balance to allocate.
-        curr_date: datetime.date
-            The current date to allocate the balance to.
-        return_last: bool
-            Whether to return the last instance of the bill.
-            Default: False
         **kwargs: Any
             Additional keyword arguments needed by the sort key
             function.
         """
 
-        # For each envelope, get the next instance of the bill. If the
-        # return last flag is True, then we will get the last instance
-        # of the bill. Otherwise, we will get the next instance of the
-        # bill. If the return true is False, then past-due bills return
-        # None.
-        bill_instances = []
-
-        for envelope in envelopes:
-            bill = envelope.bill.next_instance(
-                curr_date, return_last=return_last
-            )
-
-            if bill is not None:
-                bill_instances.append(bill)
-
         # Sort the envelopes by the sort key. This cannot have None
-        # values or it will fail.
-        sorted_bills = sorted(
-            bill_instances,
+        # values or it will fail. The envelopes in the new sorted list
+        # are references to the original envelopes.
+        sorted_envelopes = sorted(
+            envelopes,
             key=lambda x: self.sort_func(x, **kwargs),
             reverse=self.reverse
         )
 
-        # Allocate the balance to the envelopes.
-        # If the current date is past the bill's due date, then we are
-        # not going to allocate existing balance to the bill. Instead,
-        # we are going to assume the bill is already paid and the
-        # balance reflects the paid bills. The balance is the balance
-        # at the start date, or the expected balance at the start date.
-        # If this is not true, then it is up to the user to adjust the
-        # balance to reflect the expected balance at the start date.
-        #
-        # Otherwise, allocate the balance to the bill and calculate
-        # the remaining amount needed. The amount allocated is the
-        # minimum of the balance and the amount due, which is equal to
-        # the amount due if the balance is greater than the amount due.
-        # The remaining amount needed is the amount due minus the
-        # amount allocated.
-        for bill in sorted_bills:
+        # Allocate the balance to the envelopes in the sorted order.
+        # This will allocate the balance to the envelopes in the order
+        # they are sorted. Envelopes are edited in place.
+        for envelope in sorted_envelopes:
 
-            if curr_date > bill.due_date:
-                allocate = 0
-                remaining = 0
-            else:
-                allocate = min(balance, bill.amount_due)
-                remaining = bill.amount_due - allocate
+            # Calculate the amount to allocate.
+            allocation = min(balance, envelope.bill_instance.amount_due)
 
-            # Since the bills have been sorted, we will use the bill ID
-            # to find the envelope.
-            envelope = next(
-                e for e in envelopes if e.bill.bill_id == bill.bill_id
-            )
+            # Assign the allocations.
+            envelope.initial_allocation = allocation
 
-            # Assign the allocations and remaining needed.
-            envelope.allocated = allocate
-            envelope.remaining = remaining
-
-            # Update the balance for the next bill.
-            balance -= allocate
+            # Update the balance for the next envelope.
+            balance -= allocation
