@@ -97,38 +97,56 @@ Getting the next instance with inclusive control:
 import datetime
 
 from dataclasses import dataclass
-from typing import Optional
+from decimal import Decimal
+from typing import Optional, Union
 
-from ..utils.date_utils import increment_date
+from ..utils import increment_date
 
 ########################################################################
 ## BILLS
 ########################################################################
 
-@dataclass
+@dataclass(frozen=True, order=True)
 class BillInstance:
     """
-    A specific occurrence of a bill with a concrete due date and amount.
+    Immutable record of a specific bill occurrence with concrete due
+    date and amount.
     
-    BillInstance represents a single, specific instance of a bill that
-    is due on a particular date. While Bill represents the general
-    definition of a financial obligation, BillInstance represents one
-    concrete occurrence of that obligation.
+    BillInstance represents a single, concrete occurrence of a financial
+    obligation that is due on a particular date. While Bill represents
+    the general definition and schedule of an obligation, BillInstance
+    represents one specific payment event in that schedule.
     
-    Attributes
+    Parameters
     ----------
-    bill_id : str
-        The unique identifier of the parent bill.
-    service : str
-        The name of the service or obligation that this instance
-        represents.
-    amount_due : float
-        The amount due for this specific instance.
     due_date : datetime.date
-        The date when this instance is due.
-    
+        The date when this instance payment is due. Used as primary
+        sort key for chronological ordering.
+    bill_id : str
+        Unique identifier linking this instance to its parent bill
+        definition. Must be non-empty.
+    service : str
+        Human-readable name of the service or obligation this instance
+        represents. Used for reporting and identification.
+    amount_due : Decimal
+        Monetary amount required for this specific instance. Must be
+        positive for valid financial obligations.
+        
+    Raises
+    ------
+    ValueError
+        If bill_id is empty, service is empty, or amount_due is not
+        positive.
+        
     Notes
     -----
+    DESIGN CHOICE: Using frozen dataclass ensures instances remain
+    immutable after creation, preventing accidental modifications that
+    could compromise financial calculations and audit trails.
+    
+    BUSINESS GOAL: Chronological ordering via due_date enables efficient
+    timeline analysis and cash flow projections without manual sorting.
+    
     BillInstance objects are typically created by Bill methods such as 
     next_instance() and instances_in_range(). They represent the
     concrete scheduling information needed for cash flow planning and
@@ -144,11 +162,14 @@ class BillInstance:
     
     .. code-block:: python
     
+       from decimal import Decimal
+       from datetime import date
+       
        instance = BillInstance(
+           due_date=date(2025, 1, 1),
            bill_id="rent_jan",
            service="Monthly Rent",
-           amount_due=1200.00,
-           due_date=date(2025, 1, 1)
+           amount_due=Decimal("1200.00")
        )
     
     Get instances from a bill:
@@ -156,7 +177,7 @@ class BillInstance:
     .. code-block:: python
     
        bill = Bill(
-           "insurance", "Car Insurance", 150.00, True,
+           "insurance", "Car Insurance", Decimal("150.00"), True,
            start_date=date(2025, 1, 15), frequency="monthly", 
            occurrences=3
        )
@@ -168,15 +189,58 @@ class BillInstance:
        for instance in instances:
            print(
                f"{instance.service}: ${instance.amount_due} due "
-               f"{instance.due_date}."
+               f"{instance.due_date}"
            )
 
     """
-
+    
+    # INVARIANT: Primary sorting key for chronological ordering.
+    # Secondary keys provide deterministic ordering when multiple
+    # instances occur on the same date.
+    due_date: datetime.date
     bill_id: str
     service: str
-    amount_due: float
-    due_date: datetime.date
+    amount_due: Decimal
+    
+    def __post_init__(self) -> None:
+        """
+        Validate bill instance data immediately after construction.
+        
+        Raises
+        ------
+        ValueError
+            If bill_id is empty, service is empty, or amount_due is not
+            positive.
+            
+        Notes
+        -----
+        Validation runs once at construction time rather than on every
+        property access, ensuring data integrity with minimal
+        performance overhead.
+        """
+    
+        # BUSINESS GOAL: Prevent silent failures from empty identifiers
+        # that could cause incorrect bill associations or reporting.
+        if not self.bill_id or not self.bill_id.strip():
+            raise ValueError("bill_id cannot be empty or whitespace")
+            
+        if not self.service or not self.service.strip():
+            raise ValueError("service cannot be empty or whitespace")
+        
+        # BUSINESS GOAL: Ensure all financial obligations have positive
+        # amounts to prevent accounting errors and negative cash flows.
+        if self.amount_due <= 0:
+            raise ValueError("amount_due must be positive")
+        
+        # DESIGN CHOICE: Explicit Decimal validation catches conversion
+        # errors early rather than allowing invalid monetary values.
+        try:
+            if not isinstance(self.amount_due, Decimal):
+                object.__setattr__(
+                    self, 'amount_due', Decimal(str(self.amount_due))
+                )
+        except (ValueError, TypeError) as e:
+            raise ValueError(f"amount_due must be a valid monetary value: {e}")
 
 class Bill:
     """
@@ -282,11 +346,17 @@ class Bill:
     """
 
     def __init__(
-        self, bill_id: str, service: str, amount_due: float, recurring: bool,
-        due_date: Optional[datetime.date]=None,
-        start_date: Optional[datetime.date]=None,
-        end_date: Optional[datetime.date]=None, frequency: Optional[str]=None,
-        interval: Optional[int]=None, occurrences: Optional[int]=None
+        self,
+        bill_id: str,
+        service: str,
+        amount_due: Union[Decimal, float],
+        recurring: bool,
+        due_date: Optional[datetime.date] = None,
+        start_date: Optional[datetime.date] = None,
+        end_date: Optional[datetime.date] = None,
+        frequency: Optional[str] = None,
+        interval: Optional[int] = None,
+        occurrences: Optional[int] = None
     ):
         """
         Initialize a Bill with automatic configuration standardization.
@@ -402,6 +472,22 @@ class Bill:
             interval=1  # occurrences calculated automatically
         )
         """
+        
+        # Convert amount_due to Decimal for financial precision.
+        if not isinstance(amount_due, Decimal):
+            amount_due = Decimal(str(amount_due))
+        
+        # BUSINESS GOAL: Validate core bill properties to prevent
+        # downstream errors in financial calculations.
+        if not bill_id or not bill_id.strip():
+            raise ValueError("bill_id cannot be empty or whitespace")
+            
+        if not service or not service.strip():
+            raise ValueError("service cannot be empty or whitespace")
+            
+        if amount_due <= 0:
+            raise ValueError("amount_due must be positive")
+        
         self.bill_id = bill_id
         self.service = service
         self.amount_due = amount_due
@@ -475,9 +561,10 @@ class Bill:
             )
 
     def next_instance(
-        self, reference_date: datetime.date=datetime.date.today(),
-        inclusive: bool=False
-    ) -> BillInstance | None:
+        self,
+        reference_date: Optional[datetime.date] = None,
+        inclusive: bool = False
+    ) -> Optional[BillInstance]:
         """
         Get the next upcoming instance of the bill relative to a
         reference date.
@@ -489,14 +576,15 @@ class Bill:
         
         Parameters
         ----------
-        reference_date : datetime.date, default=today
+        reference_date : datetime.date, optional
             The reference date from which to search for the next bill
-            instance. This can be any date, not necessarily a due date.
+            instance. If None, uses today's date. This can be any date,
+            not necessarily a due date.
         inclusive : bool, default=False
             Controls whether bills due exactly on the reference date
             are included. If True, includes bills due on the reference
             date as the "next" instance. If False, only returns bills
-            If False, only returns bills due after the reference date.
+            due after the reference date.
         
         Returns
         -------
@@ -546,6 +634,10 @@ class Bill:
            print(next_bill.due_date) # 2025-04-01
 
         """
+        
+        # Set default to today's date.
+        if reference_date is None:
+            reference_date = datetime.date.today()
 
         # 1. Reference date is beyond the bill's active period.
         # If an end date is set and we're past it, no future instances
@@ -553,13 +645,13 @@ class Bill:
         if self.end_date is not None and reference_date > self.end_date:
             return None
         
-        # 2. Reference date is at or before the bill's first due date.
-        # The next instance is simply the first occurrence (start_date).
-        elif reference_date <= self.start_date:
+        # 2. If the reference date is before the bill's first due date,
+        # then the next instance is the first occurrence (start_date).
+        elif reference_date < self.start_date:
             return BillInstance(
+                due_date=self.start_date,
                 bill_id=self.bill_id,
                 service=self.service,
-                due_date=self.start_date,
                 amount_due=self.amount_due
             )
         
@@ -593,9 +685,9 @@ class Bill:
             # Return the first valid due date on or after the reference
             # date.
             return BillInstance(
+                due_date=current_date,
                 bill_id=self.bill_id,
                 service=self.service,
-                due_date=current_date,
                 amount_due=self.amount_due
             )
         
@@ -673,17 +765,20 @@ class Bill:
 
         """
 
-        # If the bill is not recurring, then we can just return the
-        # bill instance with the due date.
+        # EARLY EXIT OPTIMIZATION: Non-recurring bills have at most
+        # one instance to check against the range.
         if not self.recurring:
-            return [
-                BillInstance(
-                    bill_id=self.bill_id,
-                    service=self.service,
-                    due_date=self.start_date,
-                    amount_due=self.amount_due
-                )
-            ]
+            if start_reference <= self.start_date <= end_reference:
+                return [
+                    BillInstance(
+                        due_date=self.start_date,
+                        bill_id=self.bill_id,
+                        service=self.service,
+                        amount_due=self.amount_due
+                    )
+                ]
+            else:
+                return []
         
         # If the bill is recurring, then we need to generate all bill
         # instances in the range.
@@ -733,9 +828,9 @@ class Bill:
             if start_reference <= current_due_date <= end_reference:
                 instances.append(
                     BillInstance(
+                        due_date=current_due_date,
                         bill_id=self.bill_id,
                         service=self.service,
-                        due_date=current_due_date,
                         amount_due=self.amount_due
                     )
                 )
