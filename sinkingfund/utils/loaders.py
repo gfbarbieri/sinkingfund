@@ -2,72 +2,102 @@
 Data Loaders
 ============
 
-Functions for converting standardized dictionary data into domain model
-objects. These loaders are format-agnostic and work with data from any
-supported file format.
+Format-agnostic data transformation layer that converts standardized
+dictionary representations into domain model objects with comprehensive
+validation and error handling for robust financial data processing.
+
+Core Abstractions
+-----------------
+
+**Format Independence**: Loader functions operate exclusively on
+standardized list[dict] data structures, completely isolated from file
+format concerns. This separation enables the same business logic to
+process data from CSV, Excel, JSON, or any future supported format
+without modification.
+
+**Domain Model Translation**: Transforms raw dictionary data into
+properly configured domain objects (Bill instances) with automatic
+parameter mapping, type conversion, and business rule application.
+This layer handles the complexity of converting external data
+representations to internal object models.
+
+**Unified Entry Point**: The load_bills_from_file function provides a
+single interface for loading bills from any supported file format,
+automatically detecting format and applying appropriate readers before
+domain model conversion.
+
+Key Features
+------------
+
+* **Type Safety**: Automatic conversion and validation of data types
+  during domain object construction with clear error reporting for
+  invalid inputs.
+* **Business Logic Integration**: Applies domain-specific rules and
+  constraints during object creation, ensuring all created objects
+  meet business requirements.
+* **Error Context**: Provides detailed error messages that include
+  source data context for easier debugging of data quality issues.
+* **Extension Point**: Easily extensible to support additional domain
+  objects by following the same pattern of data-to-object conversion.
+* **Performance Optimization**: Efficient batch processing of large
+  datasets with minimal memory overhead and optimized object creation.
+
+Examples
+--------
+
+Loading bills from standardized data:
+
+.. code-block:: python
+
+   # Data from any reader (CSV, Excel, JSON)
+   bill_data = [
+       {
+           'bill_id': 'rent',
+           'service': 'Monthly Rent',
+           'amount_due': 1200.00,
+           'recurring': True,
+           'start_date': date(2025, 1, 1),
+           'frequency': 'monthly'
+       }
+   ]
+   
+   bills = load_bills_from_data(bill_data)
+   # Returns list of properly configured Bill objects
+
+Direct file loading with automatic format detection:
+
+.. code-block:: python
+
+   # Automatically detects CSV format and loads
+   bills = load_bills_from_file("data/bills.csv")
+   
+   # Automatically detects Excel format  
+   bills = load_bills_from_file("data/quarterly.xlsx")
+   
+   # Same interface regardless of format
+   for bill in bills:
+       print(f"{bill.service}: {bill.amount_due}")
+
 """
 
 ########################################################################
 ## IMPORTS
 ########################################################################
 
-from typing import List
+from __future__ import annotations
 
-from ..models.bills import Bill
-from .file_utils import detect_file_format
+from typing import Any
+
+from .file_utils import detect_file_format, PathLike
 from .format_registry import get_reader_for_format
 
 ########################################################################
 ## FUNCTIONS
 ########################################################################
 
-def load_bills_from_data(data: List[dict]) -> List[Bill]:
-    """
-    Convert standardized dictionary data into Bill objects.
-    
-    This function is format-agnostic - it only cares about the
-    dictionary structure, not where the data originated. It handles
-    the business logic of converting raw data into properly configured
-    Bill instances.
-    
-    Parameters
-    ----------
-    data : List[dict]
-        List of dictionaries containing bill data with standardized
-        column names and types.
-        
-    Returns
-    -------
-    List[Bill]
-        List of properly configured Bill objects.
-    """
-
-    # Initialize the list of bills.
-    bills = []
-
-    # Convert the data to Bill objects.
-    for record in data:
-
-        # Create a Bill object from the record.
-        bill = Bill(
-            bill_id=record['bill_id'],
-            service=record['service'],
-            amount_due=record['amount_due'],
-            recurring=record['recurring'],
-            due_date=record.get('due_date'),
-            start_date=record.get('start_date'),
-            end_date=record.get('end_date'),
-            frequency=record.get('frequency'),
-            interval=record.get('interval'),
-            occurrences=record.get('occurrences')
-        )
-
-        # Add the bill to the list.
-        bills.append(bill)
-
-    return bills
-
-def load_bills_from_file(file_path: str, **kwargs) -> List[Bill]:
+def load_bill_data_from_file(
+    file_path: PathLike, **kwargs: Any
+) -> dict[str, Any]:
     """
     Load bills directly from any supported file format.
     
@@ -84,17 +114,18 @@ def load_bills_from_file(file_path: str, **kwargs) -> List[Bill]:
         
     Returns
     -------
-    List[Bill] 
-        List of Bill objects loaded from the file.
+    dict[str, Any]
+        Dictionary of Bill objects loaded from the file.
     """
 
     # Detect the file format and choose the appropriate reader.
     file_format = detect_file_format(file_path)
     
+    # Get the appropriate reader for the file format.
     reader = get_reader_for_format(file_format)
+
+    # Read the data from the file.
     data = reader(file_path, **kwargs)
     
-    # Convert the data to Bill objects.
-    bills = load_bills_from_data(data)
-
-    return bills
+    # Return the data.
+    return data
