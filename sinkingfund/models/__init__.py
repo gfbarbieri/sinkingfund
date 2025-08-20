@@ -136,6 +136,7 @@ from __future__ import annotations
 from .bills import Bill, BillInstance
 from .cash_flow import CashFlow, CashFlowSchedule
 from .envelope import Envelope
+from .sinkingfund import SinkingFund
 
 ########################################################################
 ## PUBLIC API
@@ -149,4 +150,5 @@ __all__ = [
     "CashFlow",
     "CashFlowSchedule",
     "Envelope",
+    "SinkingFund",
 ]

@@ -39,9 +39,10 @@ due date.
 ## IMPORTS
 ########################################################################
 
+from decimal import Decimal
 from typing import Any, Protocol
 
-from .base import BaseAllocator
+from .base import BaseAllocator, AllocationResult
 
 from ..models import BillInstance
 from ..models import Envelope
@@ -196,8 +197,8 @@ class SortedAllocator(BaseAllocator):
         self.reverse = reverse
 
     def allocate(
-            self, envelopes: list[Envelope], balance: float, **kwargs: Any
-        ) -> None:
+        self, envelopes: list[Envelope], balance: Decimal, **kwargs: Any
+    ) -> AllocationResult:
         """
         Allocate the balance to the envelopes. Updates the envelopes
         in place with the allocated amount and the remaining amount
@@ -207,11 +208,16 @@ class SortedAllocator(BaseAllocator):
         ----------
         envelopes: list[Envelope]
             The envelopes to allocate the balance to.
-        balance: float
+        balance: Decimal
             The current balance to allocate.
         **kwargs: Any
             Additional keyword arguments needed by the sort key
             function.
+
+        Returns
+        -------
+        AllocationResult
+            The result of the allocation.
         """
 
         # Sort the envelopes by the sort key. This cannot have None
@@ -223,6 +229,9 @@ class SortedAllocator(BaseAllocator):
             reverse=self.reverse
         )
 
+        # Create a dictionary to store the allocations.
+        allocations = {}
+
         # Allocate the balance to the envelopes in the sorted order.
         # This will allocate the balance to the envelopes in the order
         # they are sorted. Envelopes are edited in place.
@@ -232,7 +241,25 @@ class SortedAllocator(BaseAllocator):
             allocation = min(balance, envelope.bill_instance.amount_due)
 
             # Assign the allocations.
-            envelope.initial_allocation = allocation
+            allocations[envelope] = allocation
 
             # Update the balance for the next envelope.
             balance -= allocation
+
+        return AllocationResult(
+            envelopes=allocations,
+            metadata=self.get_metadata()
+        )
+
+    def get_metadata(self) -> dict[str, Any]:
+        """
+        Get the metadata for the allocation strategy.
+        """
+
+        return {
+            "strategy": "SortedAllocator",
+            "sort_key": getattr(
+                self.sort_func, "__name__", str(self.sort_func)
+            ),
+            "reverse": self.reverse
+        }

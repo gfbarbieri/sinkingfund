@@ -351,6 +351,7 @@ class BillManager:
            bills = manager.create_bills(bill_data)
            manager.add_bills(bills)
         """
+
         # DESIGN CHOICE: Route to appropriate processing based on source
         # type.
         if isinstance(source, str):

@@ -80,7 +80,10 @@ from __future__ import annotations
 
 import datetime
 
-from ..models import BillInstance, Envelope
+from decimal import Decimal
+
+from ..allocation.base import AllocationResult
+from ..models import BillInstance, Envelope, CashFlowSchedule
 from ..utils import increment_date
 
 ########################################################################
@@ -289,6 +292,29 @@ class EnvelopeManager:
 
         return envelopes
 
+    def remove_envelope(self, bill_id: str, due_date: datetime.date) -> None:
+        """
+        Remove the envelopes from the manager.
+        """
+
+        # BUSINESS GOAL: Validate bill existence before removal to
+        # provide clear error feedback.
+        if not self._envelope_exists(bill_id, due_date):
+            raise ValueError(
+                f"Envelope with bill_id '{bill_id}' does not exist. "
+                f"Cannot remove non-existent envelope."
+            )
+
+        # SIDE EFFECTS: Modify manager state by removing specified
+        # envelope.
+        self.envelopes = [
+            envelope for envelope in self.envelopes
+            if (
+                envelope.bill_instance.bill_id != bill_id
+                or envelope.bill_instance.due_date != due_date
+            )
+        ]
+
     def set_contrib_dates(
         self,
         start_contrib_date: datetime.date | None = None,
@@ -422,7 +448,72 @@ class EnvelopeManager:
                 envelope.start_contrib_date = start
                 envelope.end_contrib_date = envelope.bill_instance.due_date
                 envelope.contrib_interval = contrib_interval
-    
+
+    def set_allocations(
+        self, allocations: AllocationResult | dict[Envelope, Decimal]
+    ) -> None:
+        """
+        Set the allocations for the envelopes.
+
+        Parameters
+        ----------
+        allocations : AllocationResult or dict[Envelope, Decimal]
+            A dictionary mapping envelopes to their corresponding
+            allocations.
+
+        Notes
+        -----
+        The method modifies the envelope state by setting the initial
+        allocation.
+        """
+
+        # DESIGN CHOICE: Normalize input to dictionary for consistent
+        # processing.
+        if isinstance(allocations, AllocationResult):
+            allocations = allocations.envelopes
+
+        for envelope, allocation in allocations.items():
+
+            # Find the envelope in the manager.
+            envelope = self._find_envelope(
+                bill_id=envelope.bill_instance.bill_id,
+                due_date=envelope.bill_instance.due_date
+            )
+
+            # SIDE EFFECTS: Modify envelope state by setting the initial
+            # allocation.
+            envelope.initial_allocation = allocation
+
+    def set_schedules(
+        self, schedules: dict[Envelope, CashFlowSchedule]
+    ) -> None:
+        """
+        Set the schedules for the envelopes.
+
+        Parameters
+        ----------
+        schedules : dict[Envelope, CashFlowSchedule]
+            A dictionary mapping envelopes to their corresponding cash
+            flow schedules.
+
+        Notes
+        -----
+        The method modifies the envelope state by setting the schedule
+        attribute.
+        """
+
+        for envelope, schedule in schedules.items():
+
+            # Find the envelope in the manager.
+            envelope = self._find_envelope(
+                bill_id=envelope.bill_instance.bill_id,
+                due_date=envelope.bill_instance.due_date
+            )
+
+            # SIDE EFFECTS: Modify envelope state by setting the
+            # schedule.
+            envelope.schedule = schedule
+
     def _envelope_exists(
         self, bill_id: str, due_date: datetime.date
     ) -> bool:
@@ -453,6 +544,7 @@ class EnvelopeManager:
         same bill (different due dates) while preventing duplicates
         for the same specific instance.
         """
+
         # DESIGN CHOICE: Use tuple comparison for efficient lookup
         # of bill_id and due_date combinations.
         target_instance = (bill_id, due_date)
@@ -509,3 +601,56 @@ class EnvelopeManager:
                     f"Envelope already exists for bill '{bill_id}' "
                     f"due on {due_date}. Cannot add duplicate envelope."
                 )
+            
+    def _find_envelope(
+        self, bill_id: str, due_date: datetime.date
+    ) -> Envelope:
+        """
+        Find the envelope for the given bill instance.
+
+        Parameters
+        ----------
+        bill_id : str
+            The bill ID of the envelope to find.
+        due_date : datetime.date
+            The due date of the envelope to find.
+
+        Returns
+        -------
+        Envelope
+            The envelope found for the given bill instance.
+
+        Raises
+        ------
+        ValueError
+            If no envelope is found for the given bill instance.
+
+        Notes
+        -----
+        The method performs a linear search through the manager's
+        envelope collection to find the matching bill instance.
+
+        Examples
+        --------
+
+        .. code-block:: python
+
+           # Envelope is the envelope for the electric bill due on March
+           # 15, 2024.
+           envelope = manager._find_envelope(
+               bill_id="electric",
+               due_date=datetime.date(2024, 3, 15)
+           )
+           
+        """
+
+        for envelope in self.envelopes:
+            if (
+                envelope.bill_instance.bill_id == bill_id
+                and envelope.bill_instance.due_date == due_date
+            ):
+                return envelope
+
+        raise ValueError(
+            f"Envelope not found for bill '{bill_id}' due on {due_date}."
+        )

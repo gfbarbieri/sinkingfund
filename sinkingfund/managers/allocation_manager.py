@@ -167,7 +167,7 @@ class AllocationManager:
        )
     """
 
-    def __init__(self, strategy: str, **kwargs: Any) -> None:
+    def __init__(self) -> None:
         """
         Initialize allocation manager with specified strategy.
 
@@ -212,15 +212,18 @@ class AllocationManager:
         --------
         .. code-block:: python
 
-           # Initialize with basic strategy
+           # Initialize with basic strategy.
            manager = AllocationManager(strategy="sorted")
            
-           # Initialize with strategy configuration
+           # Initialize with strategy configuration.
            manager = AllocationManager(
                strategy="proportional",
                min_allocation=Decimal("10.00")
            )
         """
+        self.allocator = None
+        
+    def set_allocator(self, strategy: str='sorted', **kwargs: Any) -> None:
 
         # BUSINESS GOAL: Validate strategy availability early to provide
         # clear feedback on configuration errors.
@@ -314,25 +317,23 @@ class AllocationManager:
         # error feedback before delegation to strategy.
         if balance < 0:
             raise ValueError(
-                f"Balance must be non-negative, got {balance}"
+                f"Balance must be non-negative, got {balance}."
             )
-        
-        # EARLY EXIT OPTIMIZATION: Skip allocation if no funds
-        # available.
-        if balance == 0:
-            return
         
         # EARLY EXIT OPTIMIZATION: Skip allocation if no envelopes
         # provided.
-        if not envelopes:
-            return
+        if not all(isinstance(envelope, Envelope) for envelope in envelopes):
+            raise ValueError(
+                "All elements must be type Envelope. Got types: "
+                f"{[type(envelope) for envelope in envelopes]}."
+            )
 
-        # SIDE EFFECTS: Delegate to strategy implementation which will
-        # modify envelope funding levels in-place.
         try:
-            self.allocator.allocate(envelopes, balance, **kwargs)
+            allocation = self.allocator.allocate(envelopes, balance, **kwargs)
         except Exception as e:
             raise type(e)(
                 f"Allocation failed with '{type(self.allocator).__name__}' "
                 f"strategy: {e}"
             ) from e
+        
+        return allocation

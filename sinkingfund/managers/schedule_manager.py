@@ -73,7 +73,7 @@ handling in concurrent scenarios.
 
 from __future__ import annotations
 
-from ..models import Envelope
+from ..models import Envelope, CashFlowSchedule
 from ..schedules import IndependentScheduler
 
 ########################################################################
@@ -117,10 +117,10 @@ class ScheduleManager:
     
     .. code-block:: python
     
-       # Create manager with independent scheduling
+       # Create manager with independent scheduling.
        manager = ScheduleManager(strategy="independent_scheduler")
        
-       # Generate schedules for all envelopes
+       # Generate schedules for all envelopes.
        manager.create_schedules(envelopes)
     
     Notes
@@ -132,7 +132,7 @@ class ScheduleManager:
     multi-threaded environments.
     """
 
-    def __init__(self, strategy: str, **kwargs) -> None:
+    def __init__(self) -> None:
         """
         Initialize the ScheduleManager with a specific scheduling
         strategy.
@@ -162,6 +162,23 @@ class ScheduleManager:
         algorithms without changing client code. New strategies can
         be added by registering them in SCHEDULE_STRATEGIES.
         """
+        self.scheduler = None
+
+    def set_scheduler(
+        self, strategy: str="independent_scheduler", **kwargs
+    ) -> None:
+        """
+        Set the scheduling strategy for the ScheduleManager.
+
+        Parameters
+        ----------
+        strategy : str
+            The name of the scheduling strategy to use. Must be a key
+            in SCHEDULE_STRATEGIES.
+        **kwargs
+            Additional keyword arguments passed to the scheduler
+            constructor. These vary by strategy type.
+        """
 
         # BUSINESS GOAL: Enable flexible scheduling approaches to meet
         # different user preferences and optimization objectives.
@@ -175,10 +192,16 @@ class ScheduleManager:
         # DESIGN CHOICE: Instantiate the strategy immediately to catch
         # configuration errors early rather than deferring to schedule
         # creation time.
-        scheduler_class = SCHEDULE_STRATEGIES[strategy]
-        self.scheduler = scheduler_class(**kwargs)
+        try:
+            self.scheduler = SCHEDULE_STRATEGIES[strategy](**kwargs)
+        except TypeError as e:
+            raise TypeError(
+                f"Invalid parameters for '{strategy}' strategy: {e}"
+            ) from e
 
-    def create_schedules(self, envelopes: list[Envelope], **kwargs) -> None:
+    def create_schedules(
+        self, envelopes: list[Envelope], **kwargs
+    ) -> dict[Envelope, CashFlowSchedule]:
         """
         Create contribution schedules for the provided envelopes using
         the configured scheduling strategy.
@@ -201,35 +224,23 @@ class ScheduleManager:
             
         Returns
         -------
-        None
-            Schedules are applied directly to the envelopes by setting
-            their schedule attribute.
+        dict[Envelope, CashFlowSchedule]
+            A dictionary mapping each envelope to its corresponding
+            schedule.
             
         Raises
         ------
         ValueError
             If envelopes are invalid or scheduling parameters are
             inconsistent.
-        
-        Notes
-        -----
-        
-        * Envelopes are modified in-place by setting their schedule
-          attribute.
-        * Empty envelope lists are handled gracefully without error.
-        * Invalid envelopes (e.g., without bill instances) may be
-          skipped by the underlying scheduler.
         """
 
-        # BUSINESS GOAL: Provide a simple, consistent interface for
-        # schedule creation regardless of the underlying algorithm
-        # complexity.
+        # BUSINESS GOAL: Validate that all envelopes are of type
+        # Envelope.
+        if not all(isinstance(envelope, Envelope) for envelope in envelopes):
+            raise ValueError(
+                "All elements must be type Envelope. Got types: "
+                f"{[type(envelope) for envelope in envelopes]}."
+            )
         
-        # EARLY EXIT OPTIMIZATION: Avoid scheduler overhead for empty
-        # envelope lists.
-        if not envelopes:
-            return
-        
-        # SIDE EFFECTS: Delegates to scheduler which modifies envelopes
-        # in-place by setting their schedule attributes.
-        self.scheduler.schedule(envelopes, **kwargs)
+        return self.scheduler.schedule(envelopes, **kwargs)

@@ -57,7 +57,7 @@ import datetime
 
 from typing import Any, Protocol
 
-from .base import BaseAllocator
+from .base import BaseAllocator, AllocationResult
 from ..models.envelope import Envelope
 
 ########################################################################
@@ -109,6 +109,10 @@ class ProportionalAllocator(BaseAllocator):
         ----------
         method: str | WeightFunction
             The method to use for allocation.
+
+        Notes
+        -----
+        The method modifies the weight function attribute.
         """
 
         # Map of method names to their weight functions.
@@ -126,8 +130,8 @@ class ProportionalAllocator(BaseAllocator):
             self.weight_func = method
     
     def allocate(
-            self, envelopes: list[Envelope], balance: float, **kwargs: Any
-        ) -> None:
+        self, envelopes: list[Envelope], balance: float, **kwargs: Any
+    ) -> AllocationResult:
         """
         Allocate balance to envelopes based on calculated weights.
 
@@ -149,9 +153,26 @@ class ProportionalAllocator(BaseAllocator):
         allocations = [balance * share for share in shares]
 
         # Set the allocations for each envelope.
+        allocations = {}
+
         for envelope, allocation in zip(envelopes, allocations):
-            envelope.initial_allocation = allocation
+            allocations[envelope] = allocation
+
+        return AllocationResult(
+            envelopes=allocations,
+            metadata=self.get_metadata()
+        )
         
+    def get_metadata(self) -> dict[str, Any]:
+        """
+        Get the metadata for the allocation strategy.
+        """
+
+        return {
+            "strategy": "ProportionalAllocator",
+            "method": self.weight_func
+        }
+
     def _urgency_weights(
             self, envelopes: list[Envelope], curr_date: datetime.date
         ) -> list[float]:

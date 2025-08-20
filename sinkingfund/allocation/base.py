@@ -43,13 +43,36 @@ consistent interface throughout the system.
 ########################################################################
 
 import datetime
+from dataclasses import dataclass
+from decimal import Decimal
+from typing import Any
 
 from abc import ABC, abstractmethod
 
 from ..models.envelope import Envelope
 
 ########################################################################
-## ABSTRACT BASE CLASS
+## ALLOCATION RESULT DATA CLASS
+########################################################################
+
+@dataclass(frozen=True)
+class AllocationResult:
+    """
+    Results of an allocation strategy execution.
+
+    Attributes
+    ----------
+    envelopes: dict[Envelope, Decimal]
+        The allocations for each envelope.
+    strategy: dict[str, Any]
+        Additional metadata about the allocation strategy.
+    """
+    
+    envelopes: dict[Envelope, Decimal]
+    metadata: dict[str, Any]
+
+########################################################################
+## ABSTRACT BASE ALLOCATOR CLASS
 ########################################################################
 
 class BaseAllocator(ABC):
@@ -62,9 +85,9 @@ class BaseAllocator(ABC):
     
     @abstractmethod
     def allocate(
-            self, envelopes: list[Envelope], balance: float,
+            self, envelopes: list[Envelope], balance: Decimal,
             curr_date: datetime.date
-        ) -> None:
+        ) -> AllocationResult:
         """
         Allocate the balance to envelopes according to the strategy.
 
@@ -72,7 +95,7 @@ class BaseAllocator(ABC):
         ----------
         envelopes: list[Envelope]
             The envelopes to allocate the balance to.
-        balance: float
+        balance: Decimal
             The current balance to allocate.
         curr_date: datetime.date
             The current date to allocate the balance to.

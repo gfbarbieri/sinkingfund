@@ -189,7 +189,9 @@ class IndependentScheduler(BaseScheduler):
     def __init__(self):
         pass
     
-    def schedule(self, envelopes: list[Envelope]) -> None:
+    def schedule(
+        self, envelopes: list[Envelope]
+    ) -> dict[Envelope, CashFlowSchedule]:
         """
         Create evenly distributed contribution schedules for each
         envelope independently.
@@ -223,10 +225,9 @@ class IndependentScheduler(BaseScheduler):
         
         Returns
         -------
-        None
-            The method modifies the provided envelopes in-place by
-            setting their schedule attribute with the optimized cash
-            flows.
+        dict[Envelope, CashFlowSchedule]
+            A dictionary mapping each envelope to its corresponding
+            schedule.
         
         Notes
         -----
@@ -239,17 +240,23 @@ class IndependentScheduler(BaseScheduler):
         due date.
         """
 
+        schedules = {}
+
         for envelope in envelopes:
             
             # BUSINESS GOAL: Create predictable, even contribution
             # schedules for each bill to help users budget
             # consistently.
-            envelope.schedule = CashFlowSchedule()
+            schedule = CashFlowSchedule()
 
-            # DESIGN CHOICE: Calculate remaining amount as of the start
-            # contribution date to account for any existing allocation.
-            remaining = envelope.remaining(
-                as_of_date=envelope.start_contrib_date
+            # DESIGN CHOICE: Calculate remaining amount equal to the
+            # amount due minus the initial allocation. We will ignore
+            # scheduled cash flows, since this function's purpose is to
+            # create a schedule for the envelope. If you use the
+            # envelopes.remaining() method, you will get the remaining
+            # amount including scheduled cash flows.
+            remaining = (
+                envelope.bill_instance.amount_due - envelope.initial_allocation
             )
 
             # Calculate the cash flow required to pay off the bill in
@@ -328,9 +335,13 @@ class IndependentScheduler(BaseScheduler):
                 )
             )
 
-            # SIDE EFFECTS: Modify the envelope in-place by setting its
-            # schedule.
-            envelope.schedule.add_cash_flows(cash_flows)
+            # Add the cash flows to the schedule.
+            schedule.add_cash_flows(cash_flows)
+
+            # Add the schedule to the schedules dictionary.
+            schedules[envelope] = schedule
+
+        return schedules
 
     def calculate_daily_contribution(
             self,
