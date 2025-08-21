@@ -28,10 +28,6 @@ python = "^3.12"
 [tool.poetry.group.analysis.dependencies]
 pandas = "^2.2.3"
 matplotlib = "^3.8.0"
-plotly = "^5.17.0"
-
-[tool.poetry.group.optimization.dependencies] 
-pulp = "^3.1.1"
 
 [tool.poetry.group.notebook.dependencies]
 ipykernel = "^6.29.5"
@@ -40,16 +36,11 @@ jupyter = "^1.0.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
-black = "^23.0.0"
-ruff = "^0.5.0"
-mypy = "^1.8.0"
-pre-commit = "^3.6.0"
 
 [tool.poetry.extras]
-analysis = ["pandas", "matplotlib", "plotly"]
-optimization = ["pulp"] 
+analysis = ["pandas", "matplotlib"]
 notebooks = ["ipykernel", "jupyter"]
-all = ["pandas", "matplotlib", "plotly", "pulp", "ipykernel", "jupyter"]
+all = ["pandas", "matplotlib", "ipykernel", "jupyter"]
 
 [build-system]
 requires = ["poetry-core"]
