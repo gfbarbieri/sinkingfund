@@ -21,7 +21,6 @@ from sinkingfund.models import (
     Envelope, BillInstance, CashFlow, CashFlowSchedule
 )
 
-
 ########################################################################
 ## ENVELOPE INITIALIZATION TESTS
 ########################################################################
@@ -362,7 +361,6 @@ class TestEnvelopeSchedule:
         # Test: Assert that the envelope is fully funded after the
         # contribution.
         assert empty_envelope.is_fully_funded(datetime.date(2024, 1, 20))
-
 
 ########################################################################
 ## ENVELOPE INTEGRATION TESTS
