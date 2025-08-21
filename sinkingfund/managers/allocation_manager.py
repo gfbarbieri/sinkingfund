@@ -246,7 +246,7 @@ class AllocationManager:
             ) from e
 
     def allocate(
-        self, envelopes: list[Envelope], balance: int, **kwargs
+        self, envelopes: list[Envelope], balance: Decimal, **kwargs
     ) -> None:
         """
         Distribute available funds across envelope collection using
@@ -264,7 +264,7 @@ class AllocationManager:
             Collection of envelopes to receive fund allocations.
             Envelopes are modified in-place with updated funding levels
             based on allocation strategy results.
-        balance : int
+        balance : Decimal
             Total amount of funds available for allocation across all
             envelopes. Must be non-negative.
         **kwargs : Any
@@ -315,7 +315,7 @@ class AllocationManager:
 
         # BUSINESS GOAL: Validate input parameters to provide clear
         # error feedback before delegation to strategy.
-        if balance < 0:
+        if balance < Decimal("0.00"):
             raise ValueError(
                 f"Balance must be non-negative, got {balance}."
             )

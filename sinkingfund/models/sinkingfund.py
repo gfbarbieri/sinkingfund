@@ -13,12 +13,14 @@ flow projection.
 
 import datetime
 
+from decimal import Decimal
+
 from .bills import BillInstance
-from .envelope import Envelope
 
 from ..managers import (
     BillManager, EnvelopeManager, AllocationManager, ScheduleManager
 )
+from ..utils.date_utils import get_date_range
 
 ########################################################################
 ## SINKING FUND MODEL
@@ -49,13 +51,74 @@ class SinkingFund:
 
         self.start_date = start_date
         self.end_date = end_date
-        self.balance = balance
+        self.balance = Decimal(str(balance))
 
         self.bill_manager = BillManager()
         self.envelope_manager = EnvelopeManager()
         self.allocation_manager = AllocationManager()
         self.schedule_manager = ScheduleManager()
+
+    ####################################################################
+    ## QUICK START
+    ####################################################################
+
+    def quick_start(
+        self, bill_source: str | list[dict], contribution_interval: int=14,
+        allocation_config=None, scheduler_config=None
+    ) -> dict[datetime.date, dict[str, Decimal]]:
+        
+        # DESIGN CHOICE: (1) Set default allocation and scheduler
+        # configurations. (2) Allow for custom allocation and scheduler
+        # configurations.
+        if allocation_config is None:
+            allocation_config = {
+                'strategy': 'sorted',
+                'strategy_kwargs': {'sort_key': 'cascade', 'reverse': False},
+                'allocator_kwargs': {}
+            }
+
+        if scheduler_config is None:
+            scheduler_config = {
+                'strategy': 'independent_scheduler',
+                'strategy_kwargs': {},
+                'scheduler_kwargs': {}
+            }
     
+        # Create envelopes from bills.
+        self.create_bills(source=bill_source)
+        instances = self.get_bills_in_range()
+        self.create_envelopes(bill_instances=instances)
+
+        # Use allocation configuration to set the allocation strategy
+        # and allocate the balance.
+        self.set_allocation_strategy(
+            strategy=allocation_config['strategy'],
+            **allocation_config['strategy_kwargs']
+        )
+        self.allocate_balance(**allocation_config['allocator_kwargs'])
+
+        # Use the contribution interval to update contribution start and
+        # end dates for envelopes.
+        self.update_contribution_dates(
+            contribution_interval=contribution_interval
+        )
+
+        # Use scheduler configuration to set the scheduler strategy and
+        # create cash flow schedules for envelopes.
+        self.set_scheduler(
+            strategy=scheduler_config['strategy'],
+            **scheduler_config['strategy_kwargs']
+        )
+        self.create_schedules(**scheduler_config['scheduler_kwargs'])
+
+        # Get aggregated contribution schedules with itemized
+        # contributions.
+        agg_schedules = self.get_date_totals(
+            start_date=self.start_date, end_date=self.end_date, itemize=True
+        )
+
+        return agg_schedules
+
     ####################################################################
     ## BILLS MANAGEMENTs
     ####################################################################
@@ -185,3 +248,122 @@ class SinkingFund:
         # Use the envelope manager to assign the schedules to the
         # envelopes.
         self.envelope_manager.set_schedules(schedules)
+
+    ####################################################################
+    ## ACCOUNT REPORTING
+    ####################################################################
+
+    def build_daily_account_report(
+        self, active_only: bool=False
+    ) -> dict[datetime.date, dict[str, Decimal]]:
+        """
+        Build the daily account report.
+
+        Parameters
+        ----------
+        active_only : bool, optional
+            Whether to only include active bills in the report.
+
+        Returns
+        -------
+        dict[datetime.date, dict[str, Decimal]]
+            The daily account report.
+
+        Examples
+        --------
+        Build the daily account report for a specific date:
+
+        .. code-block:: python
+
+            from datetime import date
+
+            report = sinkingfund.build_daily_account_report(date=date(2025, 1, 1))
+
+        The report is a dictionary with the following structure:
+
+        .. code-block:: python
+
+            {date: {bill_id: Decimal}}
+
+        The report contains the balance for each bill on the specified
+        date.
+        """
+
+        # Get all dates between the start and end dates.
+        dates = get_date_range(
+            start_date=self.start_date, end_date=self.end_date
+        )
+
+        # BUSINESS GOAL: Build the account balance report.
+        acct_report = {}
+
+        for date in dates:
+
+            # Get the information for the account balances,
+            # contributions, and payouts.
+            acct = self.envelope_manager.get_balance_as_of_date(
+                as_of_date=date
+            )
+
+            contrib = self.envelope_manager.total_cash_flow_on_date(
+                date=date, exclude='payouts'
+            )
+
+            payout = self.envelope_manager.total_cash_flow_on_date(
+                date=date, exclude='contributions'
+            )
+
+            # Add the information to the report.
+            acct_report[date] = {
+                'account_balance': self._build_report_section(
+                    data_dict=acct, date=date
+                ),
+                'contributions': self._build_report_section(
+                    data_dict=contrib, date=date
+                ),
+                'payouts': self._build_report_section(
+                    data_dict=payout, date=date
+                )
+            }
+
+            # Subset if active only.
+            if active_only:
+                acct_report = {
+                    date: data
+                    for date, data in acct_report.items()
+                    if data['contributions']['count'] > 0
+                    or data['payouts']['count'] > 0
+                }
+
+        return acct_report
+
+    def _build_report_section(
+        self, data_dict: dict, date: datetime.date
+    ) -> dict[str, int | Decimal]:
+        """
+        Helper to build a report section with consistent structure.
+
+        Parameters
+        ----------
+        data_dict : dict
+            The data dictionary.
+        date : datetime.date
+            The date to build the report for.
+
+        Returns
+        -------
+        dict[str, int | Decimal]
+            The report section.
+        """
+
+        # Get the data for the date.
+        data = data_dict.get(date, {})
+
+        # Build the report section.
+        section = {
+            'total': sum(data.values()),
+            'count': len([x for x in data.values() if x != 0]),
+            'bills': data
+        }
+
+        return section

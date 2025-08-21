@@ -179,9 +179,8 @@ class SortedAllocator(BaseAllocator):
         sort_key: str | SortKey
             Function to extract sort key from envelope.
             Default: Sort by due date (lambda e: e.bill.due_date)
-        reverse: bool
+        reverse: bool, optional, default=False
             Whether to reverse the sort order.
-            Default: False
         """
 
         # Set the sort key. If the sort key is a string, then it is a
@@ -210,7 +209,7 @@ class SortedAllocator(BaseAllocator):
             The envelopes to allocate the balance to.
         balance: Decimal
             The current balance to allocate.
-        **kwargs: Any
+        **kwargs: Any, optional
             Additional keyword arguments needed by the sort key
             function.
 

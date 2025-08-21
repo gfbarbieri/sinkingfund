@@ -90,7 +90,7 @@ import datetime
 
 from dataclasses import dataclass
 from decimal import Decimal
-from typing import Iterator
+from typing import Iterator, Literal
 
 ########################################################################
 ## CASHFLOW MODEL
@@ -292,38 +292,95 @@ class CashFlowSchedule:
 
         self.cash_flows.sort(key=lambda cf: cf.date)
     
-    def total_through_date(self, as_of_date: datetime.date) -> float:
+    def total_amount_as_of_date(
+        self, as_of_date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> Decimal:
         """
         Sum all cash flows up to and including the specified date.
         """
+
+        # DEFENSIVE: If the schedule has no cash flows, then the total
+        # amount is 0. If the passed as_of_date exceeds the maximum date
+        # in the cash flow schedule, then the amonut is 0.
+        if (
+            len(self.cash_flows) == 0
+            or as_of_date > max([cf.date for cf in self.cash_flows])
+        ):
+            return Decimal('0.00')
         
-        total = sum(
-            cf.amount for cf in self.cash_flows if cf.date <= as_of_date
+        # BUSINESS GOAL: Calculate the total amount of cash flows up to
+        # and including the specified date, with the ability to exclude
+        # contributions or payouts.
+        cash_flows = self.cash_flows_in_range(
+            start_date=min([cf.date for cf in self.cash_flows]),
+            end_date=as_of_date,
+            exclude=exclude
         )
+
+        total = sum([cf.amount for cf in cash_flows])
 
         return total
     
+    def total_amount_in_range(
+        self, start_date: datetime.date, end_date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> Decimal:
+        """
+        Total of all cash flows in a date range.
+        """
+
+        cash_flows = self.cash_flows_in_range(
+            start_date=start_date, end_date=end_date, exclude=exclude
+        )
+
+        total = sum([cf.amount for cf in cash_flows])
+
+        return total
+
+    def cash_flow_dates_in_range(
+        self, start_date: datetime.date, end_date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> list[datetime.date]:
+        """
+        Get the dates of all cash flows.
+        """
+
+        cash_flows = self.cash_flows_in_range(
+            start_date=start_date, end_date=end_date, exclude=exclude
+        )
+
+        dates = [cf.date for cf in cash_flows]
+
+        return dates
+    
     def cash_flows_in_range(
-        self, start_date: datetime.date, end_date: datetime.date
-        ) -> list[CashFlow]:
+        self, start_date: datetime.date, end_date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> list[CashFlow]:
         """
         Get cash flows within a date range.
         """
 
-        cash_flows = [
-            cf for cf in self.cash_flows if start_date <= cf.date <= end_date
-        ]
+        if exclude == 'contributions':
+            cash_flows = [
+                cf for cf in self.cash_flows
+                if start_date <= cf.date <= end_date
+                and not cf.is_inflow
+            ]
+        elif exclude == 'payouts':
+            cash_flows = [
+                cf for cf in self.cash_flows
+                if start_date <= cf.date <= end_date
+                and not cf.is_outflow
+            ]
+        else:
+            cash_flows = [
+                cf for cf in self.cash_flows
+                if start_date <= cf.date <= end_date
+            ]
 
         return cash_flows
-    
-    def total_amount(self) -> float:
-        """
-        Total of all cash flows.
-        """
-
-        total = sum(cf.amount for cf in self.cash_flows)
-
-        return total
     
     def __len__(self) -> int:
         return len(self.cash_flows)

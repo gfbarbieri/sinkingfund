@@ -110,7 +110,7 @@ Integrating with contribution schedules:
 import datetime
 
 from decimal import Decimal
-from typing import Optional
+from typing import Literal, Optional
 
 from .bills import BillInstance
 from .cash_flow import CashFlowSchedule
@@ -279,21 +279,21 @@ class Envelope:
         
         # Set default to today's date.
         if as_of_date is None:
-            as_of_date = datetime.date.today()
+            as_of_date = self.start_contrib_date
         
         # BUSINESS GOAL: Ensure that the remaining amount is always
         # non-negative.
-        current = self.current_balance(as_of_date)
+        current = self.get_balance_as_of_date(as_of_date=as_of_date)
         target = self.bill_instance.amount_due
         
         # Return zero if already fully funded to prevent negative
         # remaining.
-        remaining = max(Decimal("0"), target - current)
+        remaining = max(Decimal("0.00"), target - current)
         
         return remaining
     
-    def current_balance(
-        self, as_of_date: Optional[datetime.date] = None
+    def get_balance_as_of_date(
+        self, as_of_date: Optional[datetime.date]=None
     ) -> Decimal:
         """
         Project envelope balance as of a specific date.
@@ -329,22 +329,36 @@ class Envelope:
         
         # Set default to today's date.
         if as_of_date is None:
-            as_of_date = datetime.date.today()
-            
+            as_of_date = self.start_contrib_date
+        
         # BUSINESS GOAL: Ensure that the balance is calculated
         # correctly.
-        scheduled_contributions = (
-            self.schedule.total_through_date(as_of_date)
-        )
+        flows = self.schedule.total_amount_as_of_date(as_of_date=as_of_date)
         
         # Return the sum of the initial allocation and the scheduled
         # contributions.
-        balance = (
-            self.initial_allocation + scheduled_contributions
-        )
+        balance = self.initial_allocation + flows
         
         return balance
     
+    def total_cash_flow_on_date(
+        self, date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> Decimal:
+        """
+        Get the total contributions made on a specific date.
+        """
+
+        # BUSINESS GOAL: Get the cash flows for the given date.
+        cash_flows = self.schedule.cash_flows_in_range(
+            start_date=date, end_date=date, exclude=exclude
+        )
+
+        # BUSINESS GOAL: Get the total amount of the cash flows.
+        total = sum([cf.amount for cf in cash_flows])
+        
+        return total
+
     def is_fully_funded(
         self, as_of_date: Optional[datetime.date] = None
     ) -> bool:
@@ -383,11 +397,12 @@ class Envelope:
         
         # Set default to today's date.
         if as_of_date is None:
-            as_of_date = datetime.date.today()
+            as_of_date = self.start_contrib_date
             
         # BUSINESS GOAL: Ensure that the envelope is fully funded.
         is_fully_funded = (
-            self.current_balance(as_of_date) >= self.bill_instance.amount_due
+            self.get_balance_as_of_date(as_of_date=as_of_date)
+            >= self.bill_instance.amount_due
         )
         
         return is_fully_funded

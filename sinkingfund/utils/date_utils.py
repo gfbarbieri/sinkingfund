@@ -327,3 +327,43 @@ def increment_monthly(date: datetime.date, num_months: int=1) -> datetime.date:
     day = min(date.day, calendar.monthrange(year, month)[1])
 
     return datetime.date(year, month, day)
+
+def get_date_range(start_date: datetime.date, end_date: datetime.date) -> list[datetime.date]:
+    """
+    Get a list of dates between two dates.
+
+    Parameters
+    ----------
+    start_date : datetime.date
+        The starting date.
+    end_date : datetime.date
+        The ending date.
+        
+    Returns
+    -------
+    list[datetime.date]
+        A list of dates between the start and end dates.
+        
+    Examples
+    --------
+    Get a list of dates between two dates:
+    
+    .. code-block:: python
+    
+       from datetime import date
+       
+       # Get a list of dates between two dates.
+       # Returns [
+       #     date(2025, 1, 1), date(2025, 1, 2), ..., date(2025, 1, 31)
+       # ]
+       dates = get_date_range(date(2025, 1, 1), date(2025, 1, 31))
+
+    """
+
+    # BUSINESS GOAL: Get a list of dates between the start and end
+    # dates.
+    num_days = (end_date - start_date).days + 1
+
+    dates = [start_date + datetime.timedelta(days=i) for i in range(num_days)]
+
+    return dates

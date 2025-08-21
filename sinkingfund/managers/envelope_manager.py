@@ -81,6 +81,7 @@ from __future__ import annotations
 import datetime
 
 from decimal import Decimal
+from typing import Literal
 
 from ..allocation.base import AllocationResult
 from ..models import BillInstance, Envelope, CashFlowSchedule
@@ -513,6 +514,51 @@ class EnvelopeManager:
             # SIDE EFFECTS: Modify envelope state by setting the
             # schedule.
             envelope.schedule = schedule
+
+    def get_balance_as_of_date(
+        self, as_of_date: datetime.date
+    ) -> dict[datetime.date, dict[str, Decimal]]:
+        
+        balances = {as_of_date: {}}
+
+        for envelope in self.envelopes:
+
+            # DEFENSIVE: If the as_of_date is before the envelope's
+            # start date, then skip the envelope.
+            if as_of_date < envelope.start_contrib_date:
+                continue
+            
+            # BUSINESS GOAL: Get the balance for all active envelopes.
+            balances[as_of_date][envelope.bill_instance.bill_id] = (
+                envelope.get_balance_as_of_date(as_of_date=as_of_date)
+            )
+        
+        return balances
+
+    def total_cash_flow_on_date(
+        self, date: datetime.date,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> Decimal:
+        """
+        Get the total cash flows for all envelopes on a specific date.
+        """
+
+        cash_flows = {date: {}}
+
+        for envelope in self.envelopes:
+
+            # DEFENSIVE: If the date is before the envelope's start
+            # date, then skip the envelope.
+            if date < envelope.start_contrib_date:
+                continue
+
+            # BUSINESS GOAL: Get the total cash flow for the envelope on
+            # the given date.
+            cash_flows[date][envelope.bill_instance.bill_id] = (
+                envelope.total_cash_flow_on_date(date=date, exclude=exclude)
+            )
+
+        return cash_flows
 
     def _envelope_exists(
         self, bill_id: str, due_date: datetime.date
