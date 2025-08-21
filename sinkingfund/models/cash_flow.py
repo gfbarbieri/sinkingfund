@@ -196,7 +196,7 @@ class CashFlow:
         # BUSINESS GOAL: Prevent silent failures from empty identifiers
         # that could cause incorrect bill associations.
         if not self.bill_id or not self.bill_id.strip():
-            raise ValueError("bill_id cannot be empty or whitespace")
+            raise ValueError("bill_id cannot be empty or whitespace.")
         
         # DESIGN CHOICE: Explicit Decimal validation catches conversion
         # errors early rather than allowing invalid monetary values to

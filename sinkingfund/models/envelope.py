@@ -110,7 +110,7 @@ Integrating with contribution schedules:
 import datetime
 
 from decimal import Decimal
-from typing import Literal, Optional
+from typing import Literal, Optional, Union
 
 from .bills import BillInstance
 from .cash_flow import CashFlowSchedule
@@ -199,7 +199,7 @@ class Envelope:
     def __init__(
         self,
         bill_instance: BillInstance,
-        initial_allocation: Decimal = None,
+        initial_allocation: Union[Decimal, float] = None,
         start_contrib_date: Optional[datetime.date] = None,
         end_contrib_date: Optional[datetime.date] = None,
         contrib_interval: Optional[int] = None,
@@ -224,7 +224,10 @@ class Envelope:
         # purpose.
         if initial_allocation < 0:
             raise ValueError("initial_allocation cannot be negative.")
-            
+        
+        if isinstance(initial_allocation, float):
+            initial_allocation = Decimal(str(initial_allocation))
+        
         # BUSINESS GOAL: Ensure contribution windows are logically
         # ordered to prevent scheduling conflicts and unclear savings
         # periods.

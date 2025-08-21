@@ -222,15 +222,15 @@ class BillInstance:
         # BUSINESS GOAL: Prevent silent failures from empty identifiers
         # that could cause incorrect bill associations or reporting.
         if not self.bill_id or not self.bill_id.strip():
-            raise ValueError("bill_id cannot be empty or whitespace")
+            raise ValueError("bill_id cannot be empty or whitespace.")
             
         if not self.service or not self.service.strip():
-            raise ValueError("service cannot be empty or whitespace")
+            raise ValueError("service cannot be empty or whitespace.")
         
         # BUSINESS GOAL: Ensure all financial obligations have positive
         # amounts to prevent accounting errors and negative cash flows.
         if self.amount_due <= 0:
-            raise ValueError("amount_due must be positive")
+            raise ValueError("amount_due must be positive.")
         
         # DESIGN CHOICE: Explicit Decimal validation catches conversion
         # errors early rather than allowing invalid monetary values.
@@ -473,20 +473,39 @@ class Bill:
         )
         """
         
-        # Convert amount_due to Decimal for financial precision.
-        if not isinstance(amount_due, Decimal):
-            amount_due = Decimal(str(amount_due))
-        
-        # BUSINESS GOAL: Validate core bill properties to prevent
-        # downstream errors in financial calculations.
+        # DEFENSIVE: Validate core bill properties to prevent downstream
+        # errors in financial calculations.
         if not bill_id or not bill_id.strip():
-            raise ValueError("bill_id cannot be empty or whitespace")
+            raise ValueError("bill_id cannot be empty or whitespace.")
             
         if not service or not service.strip():
-            raise ValueError("service cannot be empty or whitespace")
+            raise ValueError("service cannot be empty or whitespace.")
             
         if amount_due <= 0:
-            raise ValueError("amount_due must be positive")
+            raise ValueError("amount_due must be positive.")
+        
+        if recurring == True and interval is None:
+            raise ValueError("Recurring bills must have an interval.")
+
+        if recurring == True and frequency is None:
+            raise ValueError("Recurring bills must have a frequency.")
+        
+        if frequency.lower() not in [
+            "daily", "weekly", "monthly", "quarterly", "annual"
+        ]:
+            raise ValueError(
+                f"Invalid frequency: {frequency}. Must be one of: "
+                "daily, weekly, monthly, quarterly, annual."
+            )
+        
+        if interval <= 0:
+            raise ValueError("interval must be positive.")
+        
+        if (
+            start_date is not None and end_date is not None
+            and start_date > end_date
+        ):
+            raise ValueError("end_date cannot be before start_date.")
         
         self.bill_id = bill_id
         self.service = service
@@ -503,7 +522,11 @@ class Bill:
         # standardization prevents edge cases in downstream planning
         # and allocation calculations.
 
-        # 1. Non-recurring bills need consistent date handling. We set
+        # 1. Convert amount_due to Decimal for financial precision.
+        if not isinstance(amount_due, Decimal):
+            self.amount_due = Decimal(str(amount_due))
+
+        # 2. Non-recurring bills need consistent date handling. We set
         # start_date = end_date = due_date so that all bill types can
         # use the same date-based methods (instances_in_range, etc.)
         # without special-casing non-recurring logic throughout the
@@ -513,7 +536,7 @@ class Bill:
             self.end_date = due_date
             self.occurrences = 1
     
-        # 2. "Recurring" bills with only 1 occurrence are actually
+        # 3. "Recurring" bills with only 1 occurrence are actually
         # non-recurring bills. Users might mistakenly set this
         # configuration, so we normalize it to prevent confusion in
         # planning calculations. This ensures occurrences=1 always
@@ -527,8 +550,9 @@ class Bill:
             self.frequency = None
             self.interval = None
 
-        # 3. Calculate end_date from occurrences for finite recurring
+        # 4. Calculate end_date from occurrences for finite recurring
         # bills.
+        # 
         # DESIGN CHOICE: We use (occurrences - 1) because start_date
         # represents the first occurrence. To reach the Nth occurrence,
         # we need (N-1) additional intervals from the start. This
@@ -543,7 +567,8 @@ class Bill:
                 num_intervals=(occurrences - 1)
             )
 
-        # 4. Calculate occurrences from end_date for user convenience.
+        # 5. Calculate occurrences from end_date for user convenience.
+        # 
         # DESIGN CHOICE: Users often know when a bill series should end
         # (e.g., "lease ends December 31st") but don't want to manually
         # count occurrences. This auto-calculation supports intuitive

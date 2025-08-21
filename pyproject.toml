@@ -36,11 +36,20 @@ jupyter = "^1.0.0"
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.0"
 pytest-cov = "^4.1.0"
+hypothesis = "^6.0.0"
 
 [tool.poetry.extras]
 analysis = ["pandas", "matplotlib"]
 notebooks = ["ipykernel", "jupyter"]
 all = ["pandas", "matplotlib", "ipykernel", "jupyter"]
+
+[tool.pytest.ini_options]
+addopts = "-q --doctest-glob='*.py' --doctest-modules --cov=sinkingfund --cov-report=term-missing --cov-report=html"
+testpaths = ["tests", "sinkingfund"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+minversion = "7.4"
 
 [build-system]
 requires = ["poetry-core"]
