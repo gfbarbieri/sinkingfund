@@ -111,13 +111,10 @@ class SinkingFund:
         )
         self.create_schedules(**scheduler_config['scheduler_kwargs'])
 
-        # Get aggregated contribution schedules with itemized
-        # contributions.
-        agg_schedules = self.get_date_totals(
-            start_date=self.start_date, end_date=self.end_date, itemize=True
-        )
+        # Create report.
+        report = self.build_daily_account_report(active_only=True)
 
-        return agg_schedules
+        return report
 
     ####################################################################
     ## BILLS MANAGEMENTs
