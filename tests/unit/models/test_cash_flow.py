@@ -186,7 +186,11 @@ class TestCashFlowSchedule:
         
         # Test: Assert that the schedule is empty and has a total of 0.
         assert len(schedule.cash_flows) == 0
-        assert schedule.total() == Decimal("0.00")
+        assert (
+            schedule.total_amount_as_of_date(
+                as_of_date=datetime.date(2024, 1, 1)
+            ) == Decimal("0.00")
+        )
 
     def test_schedule_creation_with_cash_flows(
         self,
@@ -216,7 +220,7 @@ class TestCashFlowSchedule:
         )
         
         # Add the cash flow to the schedule.
-        schedule.add_cash_flow(cash_flow)
+        schedule.add_cash_flows(cash_flow)
 
         # Test: Assert that the schedule has the correct number of cash
         # flows.
@@ -241,8 +245,9 @@ class TestCashFlowSchedule:
             amount=Decimal("50.00")
         )
         
-        # Create a schedule with the cash flows.
-        schedule = CashFlowSchedule(cash_flows=[later_flow, earlier_flow])
+        # Create a schedule and add the cash flows.
+        schedule = CashFlowSchedule()
+        schedule.add_cash_flows([later_flow, earlier_flow])
         
         # Test: Assert that the cash flows are sorted by date.
         assert schedule.cash_flows[0] == earlier_flow
@@ -259,8 +264,12 @@ class TestCashFlowSchedule:
         """
 
         # Test: Assert that the total is the sum of the cash flows.
+        # Note: Use date that includes both cash flows (not after latest)
+        actual_total = cash_flow_schedule.total_amount_as_of_date(
+            as_of_date=datetime.date(2024, 2, 28)
+        )
         expected_total = small_amount + (-medium_amount)
-        assert cash_flow_schedule.total() == expected_total
+        assert actual_total == expected_total
 
     def test_schedule_total_in_range(
         self,
@@ -272,21 +281,24 @@ class TestCashFlowSchedule:
         """
 
         # Test: Only include the first cash flow (January 15).
-        total_jan = cash_flow_schedule.total_in_range(
+        total_jan = cash_flow_schedule.total_amount_in_range(
             start_date=datetime.date(2024, 1, 1),
             end_date=datetime.date(2024, 1, 31)
         )
         assert total_jan == small_amount
         
         # Test: Include both cash flows.
-        total_all = cash_flow_schedule.total_in_range(
+        total_all = cash_flow_schedule.total_amount_in_range(
             start_date=datetime.date(2024, 1, 1),
             end_date=datetime.date(2024, 2, 28)
         )
-        assert total_all == cash_flow_schedule.total()
+        # Compare with total as of latest cash flow date
+        assert total_all == cash_flow_schedule.total_amount_as_of_date(
+            as_of_date=datetime.date(2024, 2, 28)
+        )
         
         # Test: Include no cash flows.
-        total_none = cash_flow_schedule.total_in_range(
+        total_none = cash_flow_schedule.total_amount_in_range(
             start_date=datetime.date(2024, 3, 1),
             end_date=datetime.date(2024, 3, 31)
         )
@@ -332,45 +344,44 @@ class TestCashFlowSchedule:
         """
 
         # Test: Balance after first cash flow.
-        balance_jan = cash_flow_schedule.balance_as_of(
+        balance_jan = cash_flow_schedule.total_amount_as_of_date(
             datetime.date(2024, 1, 20)
         )
         assert balance_jan == small_amount
         
         # Test: Balance after both cash flows.
-        balance_feb = cash_flow_schedule.balance_as_of(
+        balance_feb = cash_flow_schedule.total_amount_as_of_date(
             datetime.date(2024, 2, 20)
         )
-        assert balance_feb == cash_flow_schedule.total()
+        total_balance = cash_flow_schedule.total_amount_as_of_date(
+            as_of_date=datetime.date(2024, 2, 28)
+        )
+        assert balance_feb == total_balance
         
         # Test: Balance before any cash flows.
-        balance_before = cash_flow_schedule.balance_as_of(
+        balance_before = cash_flow_schedule.total_amount_as_of_date(
             datetime.date(2024, 1, 1)
         )
         assert balance_before == Decimal("0.00")
 
-    def test_schedule_daily_balances(
+    def test_schedule_date_filtering(
         self,
         cash_flow_schedule: CashFlowSchedule
     ) -> None:
         """
-        Test daily balance progression.
+        Test date filtering and cash flow access.
         """
 
-        # Test: Daily balances for the schedule.
-        daily_balances = cash_flow_schedule.daily_balances(
+        # Test: Get cash flow dates in range
+        dates = cash_flow_schedule.cash_flow_dates_in_range(
             start_date=datetime.date(2024, 1, 10),
             end_date=datetime.date(2024, 2, 20)
         )
         
-        # Test: Should have entry for each day in range.
-        expected_days = (datetime.date(2024, 2, 20) - datetime.date(2024, 1, 10)).days + 1
-        assert len(daily_balances) == expected_days
-        
-        # Test: Check specific balance points.
-        assert daily_balances[datetime.date(2024, 1, 14)] == Decimal("0.00")
-        assert daily_balances[datetime.date(2024, 1, 15)] > Decimal("0.00")
-        assert daily_balances[datetime.date(2024, 2, 15)] != daily_balances[datetime.date(2024, 1, 15)]
+        # Test: Should include both cash flow dates
+        assert len(dates) == 2
+        assert datetime.date(2024, 1, 15) in dates
+        assert datetime.date(2024, 2, 15) in dates
 
 ########################################################################
 ## CASH FLOW INTEGRATION TESTS
@@ -390,7 +401,8 @@ class TestCashFlowIntegration:
         contributions = []
         contrib_date = datetime.date(2024, 1, 1)
         
-        for _ in range(4):  # 4 bi-weekly contributions.
+        # 4 bi-weekly contributions.
+        for _ in range(4):
 
             contributions.append(
                 CashFlow(
@@ -401,11 +413,7 @@ class TestCashFlowIntegration:
             )
 
             # Add 14 days for bi-weekly.
-            contrib_date = datetime.date(
-                contrib_date.year,
-                contrib_date.month,
-                contrib_date.day + 14
-            )
+            contrib_date = contrib_date + datetime.timedelta(days=14)
         
         # Add the final payment.
         payment = CashFlow(
@@ -416,14 +424,17 @@ class TestCashFlowIntegration:
         
         # Create a schedule with the cash flows.
         all_flows = contributions + [payment]
-        schedule = CashFlowSchedule(cash_flows=all_flows)
+        schedule = CashFlowSchedule()
+        schedule.add_cash_flows(all_flows)
 
         # Test: Verify contribution phase builds up balance.
-        balance_after_contributions = schedule.balance_as_of(
+        balance_after_contributions = schedule.total_amount_as_of_date(
             datetime.date(2024, 2, 28)
         )
         assert balance_after_contributions == Decimal("300.00")
         
         # Verify payment brings balance to zero.
-        final_balance = schedule.balance_as_of(datetime.date(2024, 3, 31))
+        final_balance = schedule.total_amount_as_of_date(
+             datetime.date(2024, 3, 31)
+        )
         assert final_balance == Decimal("0.00")

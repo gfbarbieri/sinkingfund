@@ -301,14 +301,11 @@ class CashFlowSchedule:
         """
 
         # DEFENSIVE: If the schedule has no cash flows, then the total
-        # amount is 0. If the passed as_of_date exceeds the maximum date
-        # in the cash flow schedule, then the amonut is 0.
-        if (
-            len(self.cash_flows) == 0
-            or as_of_date > max([cf.date for cf in self.cash_flows])
-        ):
+        # amount is 0. Without this check, the min() function will raise
+        # an error.
+        if len(self.cash_flows) == 0:
             return Decimal('0.00')
-        
+
         # BUSINESS GOAL: Calculate the total amount of cash flows up to
         # and including the specified date, with the ability to exclude
         # contributions or payouts.
@@ -319,6 +316,9 @@ class CashFlowSchedule:
         )
 
         total = sum([cf.amount for cf in cash_flows])
+
+        if not isinstance(total, Decimal):
+            total = Decimal(str(total))
 
         return total
     

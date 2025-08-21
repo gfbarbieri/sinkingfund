@@ -344,9 +344,12 @@ def cash_flow_schedule(
     CashFlowSchedule
         Schedule containing both cash flows.
     """
-    return CashFlowSchedule(
-        cash_flows=[contribution_cash_flow, payment_cash_flow]
-    )
+
+    # Create a schedule and add the cash flows.
+    schedule = CashFlowSchedule()
+    schedule.add_cash_flows([contribution_cash_flow, payment_cash_flow])
+
+    return schedule
 
 ########################################################################
 ## SINKING FUND FIXTURES

@@ -487,19 +487,19 @@ class Bill:
         if recurring == True and interval is None:
             raise ValueError("Recurring bills must have an interval.")
 
+        if recurring == True and interval <= 0:
+            raise ValueError("interval must be positive.")
+        
         if recurring == True and frequency is None:
             raise ValueError("Recurring bills must have a frequency.")
         
-        if frequency.lower() not in [
+        if recurring == True and frequency.lower() not in [
             "daily", "weekly", "monthly", "quarterly", "annual"
         ]:
             raise ValueError(
                 f"Invalid frequency: {frequency}. Must be one of: "
                 "daily, weekly, monthly, quarterly, annual."
             )
-        
-        if interval <= 0:
-            raise ValueError("interval must be positive.")
         
         if (
             start_date is not None and end_date is not None
@@ -664,25 +664,53 @@ class Bill:
         if reference_date is None:
             reference_date = datetime.date.today()
 
-        # 1. Reference date is beyond the bill's active period.
-        # If an end date is set and we're past it, no future instances
-        # exist.
-        if self.end_date is not None and reference_date > self.end_date:
-            return None
-        
-        # 2. If the reference date is before the bill's first due date,
+        # 1. If the reference date is before the bill's first due date,
         # then the next instance is the first occurrence (start_date).
-        elif reference_date < self.start_date:
+        # This is true for both recurring and non-recurring bills. In
+        # the case of non-recurring bills, the start_date and end_date
+        # are the same as the due_date.
+        if reference_date < self.start_date:
             return BillInstance(
                 due_date=self.start_date,
                 bill_id=self.bill_id,
                 service=self.service,
                 amount_due=self.amount_due
             )
-        
-        # 3. Reference date falls within the bill's active period.
-        # Need to find the first due date that occurs on or after
-        # reference_date.
+
+        # 2. If the reference date is beyond the bill's active period
+        # (i.e., the end_date), then there is not a next instance. This
+        # is true for both recurring with an end_date and non-recurring
+        # bills where the end_date is the due_date.
+        elif self.end_date is not None and reference_date > self.end_date:
+            return None
+
+        # 3. If the reference date is equal to the bill's end_date,
+        # either because a recurring bill's last payment is due
+        # or because a non-recurring bill is due, then we only want to
+        # return the bill instance if inclusive is True. If inclusive is
+        # False, then we want to return None, since inclusive == False
+        # means to exclude instances where the reference date is equal
+        # to a due date.
+        #
+        # However, note that recurring bills would be handled by the
+        # next if-else block just fine. *This block is primarily for
+        # non-recurring bills* where interval is None.
+        elif self.end_date is not None and reference_date == self.end_date:
+            if inclusive == True:
+                return BillInstance(
+                    due_date=self.end_date,
+                    bill_id=self.bill_id,
+                    service=self.service,
+                    amount_due=self.amount_due
+                )
+            else:
+                return None
+
+        # 4. If the reference date falls within the bill's active
+        # period and the bill is recurring, then we need to find the
+        # first due date that occurs on or after reference_date. Only
+        # recurring bills will make it this far since non-recurring
+        # bills will have been handled by the previous if-else blocks.
         else:
 
             # Start iterating from the bill's first due date.
@@ -702,8 +730,8 @@ class Bill:
                     current_date = self._next_due_date(current_date)
 
             # Verify the found due date doesn't exceed the bill's end
-            # date. If it does, no valid future instances exist within
-            # the bill's lifetime.
+            # date, if set. If it does, no valid future instances exist
+            # within the bill's lifetime.
             if self.end_date is not None and current_date > self.end_date:
                 return None
             

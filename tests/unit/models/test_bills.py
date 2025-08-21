@@ -563,28 +563,30 @@ class TestBill:
         assert len(instances) == 3
         assert instances[-1].due_date == datetime.date(2024, 3, 15)
 
-    def test_bill_count_in_range(self, monthly_bill: Bill) -> None:
+    def test_bill_instance_count_via_instances_in_range(
+        self, monthly_bill: Bill
+    ) -> None:
         """
-        Test count_in_range method.
+        Test counting instances using instances_in_range method.
         """
 
         # Test: Full year. Assert that the count is 12.
-        count = monthly_bill.count_in_range(
+        instances = monthly_bill.instances_in_range(
             start_reference=datetime.date(2024, 1, 1),
             end_reference=datetime.date(2024, 12, 31)
         )
-        assert count == 12
+        assert len(instances) == 12
         
         # Test: Partial range. Assert that the count is 4.
-        count = monthly_bill.count_in_range(
+        instances = monthly_bill.instances_in_range(
             start_reference=datetime.date(2024, 3, 1),
             end_reference=datetime.date(2024, 6, 30)
         )
-        assert count == 4
+        assert len(instances) == 4
         
         # Test: No occurrences. Assert that the count is 0.
-        count = monthly_bill.count_in_range(
+        instances = monthly_bill.instances_in_range(
             start_reference=datetime.date(2023, 1, 1),
             end_reference=datetime.date(2023, 12, 31)
         )
-        assert count == 0
+        assert len(instances) == 0
