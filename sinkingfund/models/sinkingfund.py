@@ -64,7 +64,7 @@ class SinkingFund:
 
     def quick_start(
         self, bill_source: str | list[dict], contribution_interval: int=14,
-        allocation_config=None, scheduler_config=None
+        allocation_config=None, scheduler_config=None, active_only: bool=True
     ) -> dict[datetime.date, dict[str, Decimal]]:
         
         # DESIGN CHOICE: (1) Set default allocation and scheduler
@@ -112,7 +112,7 @@ class SinkingFund:
         self.create_schedules(**scheduler_config['scheduler_kwargs'])
 
         # Create report.
-        report = self.build_daily_account_report(active_only=True)
+        report = self.build_daily_account_report(active_only=active_only)
 
         return report
 
@@ -272,15 +272,17 @@ class SinkingFund:
 
         .. code-block:: python
 
-            from datetime import date
+           from datetime import date
 
-            report = sinkingfund.build_daily_account_report(date=date(2025, 1, 1))
+           report = sinkingfund.build_daily_account_report(
+              date=date(2025, 1, 1)
+           )
 
         The report is a dictionary with the following structure:
 
         .. code-block:: python
 
-            {date: {bill_id: Decimal}}
+           {date: {bill_id: Decimal}}
 
         The report contains the balance for each bill on the specified
         date.

@@ -1,19 +1,55 @@
 [tool.poetry]
 name = "sinkingfund"
 version = "0.1.0"
-description = "A library for producing contributions towards bills using a sinking fund."
+description = "A Python library for systematic bill payment planning using envelope-based sinking fund methodology."
 authors = ["Greg Barbieri <gfbarbieri@gmail.com>"]
 readme = "README.md"
+license = "MIT"
+repository = "https://github.com/gfbarbieri/sinkingfund"
+homepage = "https://github.com/gfbarbieri/sinkingfund"
+keywords = ["finance", "budgeting", "bills", "envelope-budgeting", "sinking-fund", "financial-planning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Financial and Insurance Industry", 
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Office/Business :: Financial",
+    "Topic :: Office/Business :: Financial :: Accounting",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+packages = [{include = "sinkingfund"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
-pulp = "^3.1.1"
-ipykernel = "^6.29.5"
-pandas = "^2.2.3"
 
+[tool.poetry.group.analysis.dependencies]
+pandas = "^2.2.3"
+matplotlib = "^3.8.0"
+plotly = "^5.17.0"
+
+[tool.poetry.group.optimization.dependencies] 
+pulp = "^3.1.1"
+
+[tool.poetry.group.notebook.dependencies]
+ipykernel = "^6.29.5"
+jupyter = "^1.0.0"
 
 [tool.poetry.group.dev.dependencies]
-ipykernel = "^6.29.5"
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.0.0"
+ruff = "^0.5.0"
+mypy = "^1.8.0"
+pre-commit = "^3.6.0"
+
+[tool.poetry.extras]
+analysis = ["pandas", "matplotlib", "plotly"]
+optimization = ["pulp"] 
+notebooks = ["ipykernel", "jupyter"]
+all = ["pandas", "matplotlib", "plotly", "pulp", "ipykernel", "jupyter"]
 
 [build-system]
 requires = ["poetry-core"]
