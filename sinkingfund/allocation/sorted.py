@@ -6,7 +6,7 @@ Cascading (Waterfall) Allocation (Due Date Priority)
 ----------------------------------------------------
 
 * How it works: Sort bills by due date and allocate funds to the
-earliest due bills first.
+  earliest due bills first.
 * Pros: Prioritizes urgent obligations, minimizes late payments.
 * Cons: Later bills might get zero allocation.
 * Best for: When avoiding late payments is the primary concern.
@@ -15,9 +15,9 @@ Debt Snowball (Smallest First)
 ------------------------------
 
 * How it works: Allocate to the smallest bills first, regardless of due
-date.
+  date.
 * Pros: Psychological win of paying off bills completely, reduces number
-of bills faster.
+  of bills faster.
 * Cons: Ignores due dates, may lead to late payments.
 * Best for: Motivational approach, when late fees are minimal.
 
@@ -25,13 +25,13 @@ Custom Allocation
 -----------------
 
 * How it works: Pass a custom sort key to the allocator. The sort key
-must be a callable that returns bill instances. For example, priority
-allocation could be a function that sorts bill instances explicitly by
-priority levels (e.g., 1-5), allocating to higher priority bills first.
+  must be a callable that returns bill instances. For example, priority
+  allocation could be a function that sorts bill instances explicitly by
+  priority levels (e.g., 1-5), allocating to higher priority bills first.
 * Pros: Allows manual prioritization beyond just due dates.
 * Cons: Requires manual priority assignment.
 * Best for: When some bills are critically important regardless of their
-due date.
+  due date.
 
 """
 
