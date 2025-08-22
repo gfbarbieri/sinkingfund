@@ -285,9 +285,8 @@ Before committing changes:
    # Check test coverage
    poetry run pytest --cov=sinkingfund --cov-report=term-missing
    
-   # Run linting (if available)
-   poetry run ruff check .
-   poetry run mypy sinkingfund/
+   # Check code formatting
+   poetry run pytest --doctest-modules
 
 This ensures code quality and prevents regressions in the financial
 calculation logic.

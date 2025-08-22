@@ -4,9 +4,6 @@ Managers Package
 Manager classes provide high-level orchestration and coordination between
 different components of the sinking fund system.
 
-.. automodule:: sinkingfund.managers
-   :members:
-
 Allocation Manager
 ------------------
 

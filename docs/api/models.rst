@@ -4,9 +4,6 @@ Models Package
 The models package contains core domain objects for sinking fund management,
 including bills, envelopes, cash flows, and the main SinkingFund orchestrator.
 
-.. automodule:: sinkingfund.models
-   :members:
-
 Bills Module
 ------------
 

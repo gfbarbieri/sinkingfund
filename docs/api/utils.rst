@@ -4,9 +4,6 @@ Utils Package
 Utility functions provide foundational support for date arithmetic,
 file operations, data loading, and format handling.
 
-.. automodule:: sinkingfund.utils
-   :members:
-
 Date Utils
 ----------
 

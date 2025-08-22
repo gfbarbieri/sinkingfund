@@ -4,9 +4,6 @@ Allocation Package
 Allocation strategies implement different algorithms for distributing
 available funds across multiple envelopes based on priorities and constraints.
 
-.. automodule:: sinkingfund.allocation
-   :members:
-
 Base Allocator
 --------------
 

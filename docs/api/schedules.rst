@@ -4,9 +4,6 @@ Schedules Package
 Scheduling components generate optimized contribution schedules for envelopes
 based on available funds, timing constraints, and planning objectives.
 
-.. automodule:: sinkingfund.schedules
-   :members:
-
 Base Scheduler
 --------------
 

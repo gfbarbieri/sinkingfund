@@ -60,12 +60,9 @@ class AllocationResult:
     """
     Results of an allocation strategy execution.
 
-    Attributes
-    ----------
-    envelopes: dict[Envelope, Decimal]
-        The allocations for each envelope.
-    strategy: dict[str, Any]
-        Additional metadata about the allocation strategy.
+    Contains the results of applying an allocation strategy to a set
+    of envelopes, including the specific allocations and any metadata
+    about the allocation process.
     """
     
     envelopes: dict[Envelope, Decimal]

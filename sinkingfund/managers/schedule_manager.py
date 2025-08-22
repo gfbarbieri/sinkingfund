@@ -7,7 +7,7 @@ contribution schedules for sinking fund envelopes using various
 scheduling algorithms.
 
 Core Responsibilities
---------------------
+---------------------
 
 The ScheduleManager serves as the orchestration layer between envelope
 management and scheduling algorithms. It:
@@ -23,7 +23,7 @@ management and scheduling algorithms. It:
    applied to the corresponding envelopes.
 
 Supported Scheduling Strategies
-------------------------------
+-------------------------------
 
 * **Independent Scheduler**: Creates even contribution schedules for
   each bill independently, optimizing for predictable per-bill
@@ -34,7 +34,7 @@ Supported Scheduling Strategies
   contributions across all bills.
 
 Architectural Design
--------------------
+--------------------
 
 The ScheduleManager follows the Strategy pattern, allowing different
 scheduling algorithms to be plugged in without changing the core
@@ -46,7 +46,7 @@ management logic. This design supports:
 * Clear separation between scheduling logic and envelope management
 
 Example Usage
-------------
+-------------
 
 .. code-block:: python
 

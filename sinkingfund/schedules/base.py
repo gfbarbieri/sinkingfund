@@ -62,7 +62,7 @@ class BaseScheduler(ABC):
     implementation strategies.
     
     Core Responsibilities
-    --------------------
+    ---------------------
     
     All scheduler implementations must handle:
     
@@ -91,7 +91,7 @@ class BaseScheduler(ABC):
       isolation while maintaining interface compatibility.
     
     Implementation Guidelines
-    ------------------------
+    -------------------------
     
     Concrete schedulers should:
     
@@ -102,7 +102,7 @@ class BaseScheduler(ABC):
     * Modify envelopes in-place by setting their schedule attributes
     
     Example Implementation Structure
-    -------------------------------
+    --------------------------------
     
     .. code-block:: python
     
@@ -136,7 +136,7 @@ class BaseScheduler(ABC):
         to the envelopes.
         
         Implementation Requirements
-        --------------------------
+        ---------------------------
         
         Concrete implementations must:
         

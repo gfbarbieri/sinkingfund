@@ -7,7 +7,7 @@ scheduling contributions for sinking fund envelopes without considering
 interactions between different bills.
 
 Mathematical Concept
--------------------
+--------------------
 
 The core principle behind the Independent Scheduler is simple equal
 distribution of contributions across available time periods. For each
@@ -31,14 +31,14 @@ The contribution formula is:
 Where:
 
 * ``remaining_amount`` is the amount still needed to fully fund the
-bill.
+  bill.
 * ``days_until_due`` is the number of days between the start date and
-the bill's due date.
+  the bill's due date.
 * ``interval_days`` is the number of days in each contribution interval
-(e.g., 7 for weekly, 14 for bi-weekly).
+  (e.g., 7 for weekly, 14 for bi-weekly).
 
 Operation Details
-----------------
+-----------------
 
 The scheduler processes each envelope independently through these steps:
 
@@ -62,31 +62,31 @@ first contribution to ensure the total exactly matches the required
 amount.
 
 Advantages
----------
+----------
 
 * **Simplicity**: Easy to understand and implement.
 * **Predictability**: Creates regular, consistent contributions for
-each bill.
+  each bill.
 * **Bill-Level Smoothing**: Each bill has evenly distributed
-contributions.
+  contributions.
 * **Independence**: Changes to one bill don't affect the
-contribution schedule of others.
+  contribution schedule of others.
 
 When to Use
-----------
+-----------
 
 The Independent Scheduler is ideal for:
 
 * Users who want to understand exactly how much they're contributing
-to each bill at each interval.
+  to each bill at each interval.
 * Scenarios where bills should be treated separately without
-interactions.
+  interactions.
 * Situations where bill-level contribution consistency is more
-important than total outflow smoothing.
+  important than total outflow smoothing.
 * Simple sinking fund setups with few bills.
 
 Comparison with Other Schedulers
--------------------------------
+--------------------------------
 
 Unlike the LP Scheduler which optimizes for smooth total contributions
 across all bills (potentially creating variable per-bill contributions),
@@ -161,7 +161,7 @@ class IndependentScheduler(BaseScheduler):
     * Easy-to-understand contribution logic without complex optimization
     * Bill-level contribution consistency
     * Independence between bills (changes to one bill don't affect
-    others)
+      others)
     
     This scheduler is ideal for users who want clear visibility into how
     much they're contributing to each specific bill at each interval and
@@ -200,20 +200,20 @@ class IndependentScheduler(BaseScheduler):
         schedule of cash flows that:
         
         #. Evenly distributes contributions from the start date to the
-        bill's due date.
+           bill's due date.
         #. Respects the envelope's specified contribution interval.
         #. Ensures the total contributions exactly match the remaining
-        amount needed.
+           amount needed.
         
         For each envelope, the scheduler:
         
         #. Identifies the next bill instance.
         #. Calculates contribution intervals between start date and due
-        date.
+           date.
         #. Determines the daily contribution rate by dividing the
-        remaining amount by days until due.
+           remaining amount by days until due.
         #. Creates appropriately sized cash flows for each interval
-        period.
+           period.
         #. Adds a final negative cash flow for the bill payment.
         
         Parameters
@@ -233,11 +233,11 @@ class IndependentScheduler(BaseScheduler):
         -----
         * Envelopes without a valid next bill instance are skipped.
         * The schedule handles partial intervals at the end of the
-        period.
+          period.
         * Rounding differences are added to the last contribution to
-        ensure exact funding.
+          ensure exact funding.
         * A negative cash flow equal to the bill amount is added on the
-        due date.
+          due date.
         """
 
         schedules = {}
@@ -387,11 +387,11 @@ class IndependentScheduler(BaseScheduler):
         Notes
         -----
         * Past-due bills return a contribution of zero, treating them as
-        already paid.
+          already paid.
         * Bills due today return the full remaining amount.
         * The result is rounded to 2 decimal places for currency values.
         * This is a key calculation that determines the smoothness of
-        contributions across the available time period.
+          contributions across the available time period.
         """
 
         # BUSINESS GOAL: Calculate how much must be saved daily to
@@ -449,12 +449,12 @@ class IndependentScheduler(BaseScheduler):
         -----
 
         * The returned list will contain the interval length repeated
-        for each full interval.
+          for each full interval.
         * If there are remaining days that don't form a complete
-        interval, a final element with that number of days is added.
+          interval, a final element with that number of days is added.
         * This supports the creation of appropriate cash flows that
-        respect the envelope's contribution frequency while ensuring
-        the bill is fully funded by the due date.
+          respect the envelope's contribution frequency while ensuring
+          the bill is fully funded by the due date.
         
         """
 

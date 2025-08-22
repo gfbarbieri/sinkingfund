@@ -118,23 +118,23 @@ class AllocationManager:
     ---------------------
 
     - **Strategy Management**: Initialize and maintain allocation
-    strategy instances with proper configuration and parameter handling.
+      strategy instances with proper configuration and parameter handling.
     - **Allocation Coordination**: Provide unified interface for fund
-    distribution while delegating algorithm specifics to strategies.
+      distribution while delegating algorithm specifics to strategies.
     - **Parameter Routing**: Pass strategy-specific options and
-    configuration through to underlying allocation implementations.
+      configuration through to underlying allocation implementations.
     - **Error Handling**: Validate inputs and provide clear feedback
-    for invalid strategies or allocation parameters.
+      for invalid strategies or allocation parameters.
 
     Design Patterns
     ---------------
 
     - **Strategy Pattern**: Encapsulate allocation algorithms in
-    interchangeable strategy objects with consistent interfaces.
+      interchangeable strategy objects with consistent interfaces.
     - **Delegation Pattern**: Forward allocation operations to strategy
-    implementations while maintaining management responsibilities.
+      implementations while maintaining management responsibilities.
     - **Registry Pattern**: Use strategy lookup table for flexible
-    algorithm selection and extensibility.
+      algorithm selection and extensibility.
 
     Attributes
     ----------

@@ -317,7 +317,7 @@ class Bill:
     Examples
     --------
     Create a non-recurring bill:
-    
+
     .. code-block:: python
     
        bill = Bill(
@@ -327,11 +327,11 @@ class Bill:
            recurring=False,
            due_date=date(2025, 12, 1)
        )
-    
+       
     Create a recurring bill with a fixed number of occurrences:
     
     .. code-block:: python
-    
+
        bill = Bill(
            bill_id="rent", 
            service="Monthly Rent",
@@ -373,50 +373,38 @@ class Bill:
         bill_id : str
             The unique identifier for the bill.
         service : str  
-            The name of the service or obligation that the bill
-            represents.
+            The name of the service or obligation that the bill represents.
         amount_due : float
             The amount due for each instance of the bill.
         recurring : bool
             Whether the bill repeats according to a schedule.
-            Non-recurring bills have exactly one due date.
         due_date : datetime.date, optional
-            The due date for non-recurring bills. Required when
-            recurring=False.
+            The due date for non-recurring bills. Required when recurring=False.
         start_date : datetime.date, optional  
             The date of the first occurrence for recurring bills.
-            Required when recurring=True.
         end_date : datetime.date, optional
-            The final due date for recurring bills. Cannot be used with
-            occurrences. The system will calculate occurrences
-            automatically.
+            The final due date for recurring bills. Cannot be used with occurrences.
         frequency : str, optional
-            The frequency of recurrence. Valid values are 'daily',
-            'weekly', 'monthly', 'quarterly', 'annual'. Required when
-            recurring=True.
+            The frequency of recurrence. Valid values are 'daily', 'weekly', 'monthly', 'quarterly', 'annual'.
         interval : int, optional
-            The interval between occurrences. For example, interval=2
-            with frequency='weekly' creates a bi-weekly bill. Defaults
-            to 1.
+            The interval between occurrences. For example, interval=2 with frequency='weekly' creates a bi-weekly bill.
         occurrences : int, optional
-            The total number of occurrences for recurring bills. Cannot
-            be used with end_date. The system will calculate end_date
-            automatically.
-        
+            The total number of occurrences for recurring bills. Cannot be used with end_date.
+            
         Notes
         -----
         The constructor performs several standardization operations:
         
         1. **Non-recurring bills**: Sets start_date and end_date to
-        due_date, and occurrences to 1.
+           due_date, and occurrences to 1.
         2. **Pseudo-recurring bills**: Bills marked as recurring with
-        occurrences=1 are converted to non-recurring for consistency.
+           occurrences=1 are converted to non-recurring for consistency.
         3. **End date calculation**: When occurrences > 1 is provided,
-        the end_date is calculated as start_date + (occurrences-1)
-        intervals.
+           the end_date is calculated as start_date + (occurrences-1)
+           intervals.
         4. **Occurrence calculation**: When end_date is provided without
-        occurrences, the number of occurrences is calculated by counting
-        how many instances fit between start_date and end_date.
+           occurrences, the number of occurrences is calculated by counting
+           how many instances fit between start_date and end_date.
         
         The occurrences-1 pattern is used because start_date represents
         the first occurrence, so only (occurrences-1) additional
@@ -424,9 +412,9 @@ class Bill:
         
         Raises
         ------
-        The constructor does not currently validate input parameters,
-        but invalid combinations may cause errors in subsequent method
-        calls.
+        ValueError
+            When invalid parameter combinations are provided in subsequent
+            method calls (the constructor itself does not validate).
         
         Examples
         --------
@@ -434,43 +422,44 @@ class Bill:
         
         .. code-block:: python
         
-        bill = Bill(
-            bill_id="annual_fee",
-            service="Credit Card Annual Fee",
-            amount_due=95.00, 
-            recurring=False,
-            due_date=date(2025, 12, 1)
-        )
+           bill = Bill(
+               bill_id="annual_fee",
+               service="Credit Card Annual Fee",
+               amount_due=95.00, 
+               recurring=False,
+               due_date=date(2025, 12, 1)
+           )
         
         Create a recurring bill with automatic end_date calculation:
         
         .. code-block:: python
         
-        bill = Bill(
-            bill_id="rent", 
-            service="Monthly Rent",
-            amount_due=1200.00,
-            recurring=True,
-            start_date=date(2025, 1, 1),
-            frequency="monthly", 
-            interval=1,
-            occurrences=12  # end_date calculated automatically
-        )
+           bill = Bill(
+               bill_id="rent", 
+               service="Monthly Rent",
+               amount_due=1200.00,
+               recurring=True,
+               start_date=date(2025, 1, 1),
+               frequency="monthly", 
+               interval=1,
+               occurrences=12
+           )
         
         Create a recurring bill with automatic occurrence calculation:
         
         .. code-block:: python
         
-        bill = Bill(
-            bill_id="quarterly_tax", 
-            service="Quarterly Tax Payment",
-            amount_due=2500.00,
-            recurring=True,
-            start_date=date(2025, 1, 15),
-            end_date=date(2025, 12, 15),
-            frequency="quarterly", 
-            interval=1  # occurrences calculated automatically
-        )
+           bill = Bill(
+               bill_id="quarterly_tax", 
+               service="Quarterly Tax Payment",
+               amount_due=2500.00,
+               recurring=True,
+               start_date=date(2025, 1, 15),
+               end_date=date(2025, 12, 15),
+               frequency="quarterly", 
+               interval=1
+           )
+        
         """
         
         # DEFENSIVE: Validate core bill properties to prevent downstream

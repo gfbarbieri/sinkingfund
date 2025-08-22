@@ -5,7 +5,7 @@ Requirements
 ------------
 
 - Python 3.12 or higher
-- Poetry (recommended) or pip for package management
+- Poetry (for dependency management)
 
 Install from Source
 -------------------
@@ -14,22 +14,14 @@ Clone the repository and install using Poetry:
 
 .. code-block:: bash
 
-   git clone https://github.com/yourusername/sinkingfund.git
+   git clone https://github.com/gfbarbieri/sinkingfund.git
    cd sinkingfund
    poetry install
-
-Or using pip:
-
-.. code-block:: bash
-
-   git clone https://github.com/yourusername/sinkingfund.git
-   cd sinkingfund
-   pip install -e .
 
 Optional Dependencies
 ---------------------
 
-For data analysis features:
+For data analysis features (pandas, matplotlib):
 
 .. code-block:: bash
 
@@ -56,8 +48,22 @@ For development with testing and documentation tools:
 
    poetry install --with dev
 
-This includes pytest, Sphinx, and all development tools needed to
-contribute to the project.
+This includes:
+
+- pytest (testing framework)
+- pytest-cov (coverage reporting)
+- hypothesis (property-based testing)
+- sphinx (documentation generation)
+- sphinx-rtd-theme (documentation theme)
+
+Running Tests
+-------------
+
+After installation, verify everything works by running the test suite:
+
+.. code-block:: bash
+
+   poetry run pytest
 
 Verification
 ------------
@@ -66,8 +72,8 @@ Verify your installation by importing the package:
 
 .. code-block:: python
 
-   import sinkingfund
-   from sinkingfund import Bill, Envelope
+   from sinkingfund import Bill
+   from datetime import date
    
    # Create a simple bill
    bill = Bill(
