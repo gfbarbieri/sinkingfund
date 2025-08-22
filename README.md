@@ -228,6 +228,19 @@ poetry install --with dev,analysis,notebook
 # Note: Tests are not yet implemented.
 ```
 
+## TODO
+
+- [ ] Add unit tests for allocator, scheduler, and manager modules.
+- [ ] Add integration tests for the core SinkingFund class.
+- [ ] Add linter tests (ruff).
+- [ ] Add code formatter tests (black, ruff).
+- [ ] I am learning about pre-commit hooks and would like to use them to run tests, linter, and formatter on every commit.
+- [ ] Upgrade Sphinx documentation to easily convert example Jupyter notebooks into documentation pages.
+- [ ] Create example notebooks for general use and specific bill types.
+- [ ] Migrate to a database approach instead of current memory-based approach for scalability.
+- [ ] Build feature to include interest in balances.
+- [ ] Build feature to use interest on balances to in calculating the contribution schedules.
+
 ## License
 
 MIT License - see LICENSE file for details.
