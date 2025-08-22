@@ -62,10 +62,70 @@ class SinkingFund:
     ## QUICK START
     ####################################################################
 
-    def quick_start(
-        self, bill_source: str | list[dict], contribution_interval: int=14,
-        allocation_config=None, scheduler_config=None, active_only: bool=True
+    def quick_report(
+        self, contribution_interval: int=14, allocation_config=None,
+        scheduler_config=None, active_only: bool=True
     ) -> dict[datetime.date, dict[str, Decimal]]:
+        """
+        Generate a quick report for the sinking fund.
+
+        Parameters
+        ----------
+        contribution_interval : int, optional
+            The contribution interval.
+        allocation_config : dict, optional
+            The allocation configuration.
+        scheduler_config : dict, optional
+            The scheduler configuration.
+        active_only : bool, optional
+            Whether to only include active bills in the report.
+
+        Returns
+        -------
+        dict[datetime.date, dict[str, Decimal]]
+            The daily account report.
+
+        Examples
+        --------
+        Generate a quick report for the sinking fund:
+
+        .. code-block:: python
+
+           report = sinkingfund.quick_report(
+              contribution_interval=14,
+              allocation_config=None,
+              scheduler_config=None,
+              active_only=True
+           )
+
+        The report is a dictionary with the following structure:
+
+        .. code-block:: python
+
+           {date: {
+               'account_balance': {
+                   'total': Decimal,
+                   'count': int,
+                   'bills': dict[str, Decimal]
+               },
+               'contributions': {
+                   'total': Decimal,
+                   'count': int,
+                   'bills': dict[str, Decimal]
+               },
+               'payouts': {
+                   'total': Decimal,
+                   'count': int,
+                   'bills': dict[str, Decimal]
+               }
+           }}
+
+        The report contains the balance for each bill on the specified
+        date.
+
+        The report can be used to track the progress of the sinking fund
+        and to make adjustments to the contribution schedule.
+        """
         
         # DESIGN CHOICE: (1) Set default allocation and scheduler
         # configurations. (2) Allow for custom allocation and scheduler
@@ -85,7 +145,6 @@ class SinkingFund:
             }
     
         # Create envelopes from bills.
-        self.create_bills(source=bill_source)
         instances = self.get_bills_in_range()
         self.create_envelopes(bill_instances=instances)
 
