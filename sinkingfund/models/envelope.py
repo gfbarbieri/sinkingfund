@@ -334,9 +334,12 @@ class Envelope:
         if as_of_date is None:
             as_of_date = self.start_contrib_date
         
-        # BUSINESS GOAL: Ensure that the balance is calculated
-        # correctly.
-        flows = self.schedule.total_amount_as_of_date(as_of_date=as_of_date)
+        # BUSINESS GOAL: Sum the contributions that have occurred
+        # up to the as_of_date. Payouts are excluded in case the date
+        # passed is at least the due date of the bill.
+        flows = self.schedule.total_amount_as_of_date(
+            as_of_date=as_of_date, exclude='payouts'
+        )
         
         # Return the sum of the initial allocation and the scheduled
         # contributions.
