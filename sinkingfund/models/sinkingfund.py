@@ -59,7 +59,7 @@ class SinkingFund:
         self.schedule_manager = ScheduleManager()
 
     ####################################################################
-    ## QUICK START
+    ## QUICK REPORT
     ####################################################################
 
     def quick_report(

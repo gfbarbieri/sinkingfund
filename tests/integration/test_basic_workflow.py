@@ -41,7 +41,8 @@ class TestBasicWorkflow:
             amount_due=Decimal("150.00"),
             recurring=True,
             start_date=datetime.date(2024, 1, 15),
-            frequency="monthly"
+            frequency="monthly",
+            interval=1
         )
         
         # Generate bill instances for first quarter.

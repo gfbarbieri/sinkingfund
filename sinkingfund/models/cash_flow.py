@@ -293,7 +293,7 @@ class CashFlowSchedule:
         self.cash_flows.sort(key=lambda cf: cf.date)
     
     def total_amount_as_of_date(
-        self, as_of_date: datetime.date,
+        self, as_of_date: datetime.date | None=None,
         exclude: Literal['contributions', 'payouts'] | None=None
     ) -> Decimal:
         """
@@ -323,7 +323,8 @@ class CashFlowSchedule:
         return total
     
     def total_amount_in_range(
-        self, start_date: datetime.date, end_date: datetime.date,
+        self, start_date: datetime.date | None=None,
+        end_date: datetime.date | None=None,
         exclude: Literal['contributions', 'payouts'] | None=None
     ) -> Decimal:
         """
@@ -337,31 +338,26 @@ class CashFlowSchedule:
         total = sum([cf.amount for cf in cash_flows])
 
         return total
-
-    def cash_flow_dates_in_range(
-        self, start_date: datetime.date, end_date: datetime.date,
-        exclude: Literal['contributions', 'payouts'] | None=None
-    ) -> list[datetime.date]:
-        """
-        Get the dates of all cash flows.
-        """
-
-        cash_flows = self.cash_flows_in_range(
-            start_date=start_date, end_date=end_date, exclude=exclude
-        )
-
-        dates = [cf.date for cf in cash_flows]
-
-        return dates
     
     def cash_flows_in_range(
-        self, start_date: datetime.date, end_date: datetime.date,
+        self, start_date: datetime.date | None=None,
+        end_date: datetime.date | None=None,
         exclude: Literal['contributions', 'payouts'] | None=None
     ) -> list[CashFlow]:
         """
         Get cash flows within a date range.
         """
 
+        # BUSINESS GOAL: If no start or end date is provided, then use
+        # the min and max dates of the cash flows.
+        if start_date is None:
+            start_date = min([cf.date for cf in self.cash_flows])
+        
+        if end_date is None:
+            end_date = max([cf.date for cf in self.cash_flows])
+
+        # BUSINESS GOAL: If exclude is provided, then filter the cash
+        # flows accordingly.
         if exclude == 'contributions':
             cash_flows = [
                 cf for cf in self.cash_flows
@@ -381,7 +377,24 @@ class CashFlowSchedule:
             ]
 
         return cash_flows
-    
+
+    def cash_flow_dates_in_range(
+        self, start_date: datetime.date | None=None,
+        end_date: datetime.date | None=None,
+        exclude: Literal['contributions', 'payouts'] | None=None
+    ) -> list[datetime.date]:
+        """
+        Get the dates of all cash flows.
+        """
+
+        cash_flows = self.cash_flows_in_range(
+            start_date=start_date, end_date=end_date, exclude=exclude
+        )
+
+        dates = [cf.date for cf in cash_flows]
+
+        return dates
+
     def __len__(self) -> int:
         return len(self.cash_flows)
     
