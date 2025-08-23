@@ -144,8 +144,23 @@ class SinkingFund:
                 'scheduler_kwargs': {}
             }
     
-        # Create envelopes from bills.
+        # Get the bill instances in the range of the sinking fund
+        # planning window.
         instances = self.get_bills_in_range()
+
+        # Before creating envelopes, delete all existing envelopes
+        # in the fund. This avoids issues with trying to run quick
+        # report multiple times with the same bill instances.
+        self.delete_envelopes(
+            envelope_ids=[
+                (
+                    envelope.bill_instance.bill_id,
+                    envelope.bill_instance.due_date
+                )
+                for envelope in self.envelope_manager.envelopes
+            ]
+        )
+        
         self.create_envelopes(bill_instances=instances)
 
         # Use allocation configuration to set the allocation strategy
