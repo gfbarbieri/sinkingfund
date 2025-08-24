@@ -296,7 +296,8 @@ class Envelope:
         return remaining
     
     def get_balance_as_of_date(
-        self, as_of_date: Optional[datetime.date]=None
+        self, as_of_date: Optional[datetime.date]=None,
+        exclude: Literal['contributions', 'payouts'] | None=None
     ) -> Decimal:
         """
         Project envelope balance as of a specific date.
@@ -309,6 +310,9 @@ class Envelope:
         ----------
         as_of_date : datetime.date, optional
             Date for balance projection. If None, uses today's date.
+        exclude : Literal['contributions', 'payouts'] | None, optional
+            Exclude contributions or payouts from the balance
+            calculation. If None, both are included.
             
         Returns
         -------
@@ -338,7 +342,7 @@ class Envelope:
         # up to the as_of_date. Payouts are excluded in case the date
         # passed is at least the due date of the bill.
         flows = self.schedule.total_amount_as_of_date(
-            as_of_date=as_of_date, exclude='payouts'
+            as_of_date=as_of_date, exclude=exclude
         )
         
         # Return the sum of the initial allocation and the scheduled

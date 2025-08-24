@@ -370,6 +370,16 @@ class SinkingFund:
         # BUSINESS GOAL: Build the account balance report.
         acct_report = {}
 
+        # It is possible that the account contains a balance that was
+        # not allocated to any envelopes. This can happen if the inital
+        # account balance is greater than the sum of the amounts due for
+        # all envelopes.
+        static_acct_balance = self.balance - sum(
+            envelope.initial_allocation
+            for envelope in self.envelope_manager.envelopes
+        )
+        print(static_acct_balance)
+
         for date in dates:
 
             # Get the information for the account balances,
@@ -398,6 +408,13 @@ class SinkingFund:
                     data_dict=payout, date=date
                 )
             }
+
+            # Adjust for any account balance that was not allocated to
+            # any envelopes.
+            if static_acct_balance > 0:
+                acct_report[date]['account_balance']['total'] += (
+                    static_acct_balance
+                )
 
             # Subset if active only.
             if active_only:
