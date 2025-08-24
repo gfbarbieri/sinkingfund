@@ -378,7 +378,6 @@ class SinkingFund:
             envelope.initial_allocation
             for envelope in self.envelope_manager.envelopes
         )
-        print(static_acct_balance)
 
         for date in dates:
 
