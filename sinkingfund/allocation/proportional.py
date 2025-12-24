@@ -55,6 +55,7 @@ Custom Weighting
 
 import datetime
 
+from decimal import Decimal
 from typing import Any, Protocol
 
 from .base import BaseAllocator, AllocationResult
@@ -150,13 +151,13 @@ class ProportionalAllocator(BaseAllocator):
         shares = [weight / sum(weights) for weight in weights]
 
         # Allocate funds proportionally to shares.
-        allocations = [balance * share for share in shares]
+        allocation_amounts = [balance * share for share in shares]
 
         # Set the allocations for each envelope.
         allocations = {}
 
-        for envelope, allocation in zip(envelopes, allocations):
-            allocations[envelope] = allocation
+        for envelope, allocation in zip(envelopes, allocation_amounts):
+            allocations[envelope] = Decimal(str(allocation))
 
         return AllocationResult(
             envelopes=allocations,
@@ -202,11 +203,13 @@ class ProportionalAllocator(BaseAllocator):
             # is in the past and we will treat it as if it has already
             # been paid, thus the weight is zero.
             if days < 0:
-                weight = 0
+                weight = 0.0
             elif days == 0:
-                weight = envelope.bill_instance.amount_due
+                weight = float(envelope.bill_instance.amount_due)
             else:
-                weight = envelope.bill_instance.amount_due / days
+                weight = float(
+                    envelope.bill_instance.amount_due / Decimal(str(days))
+                )
 
             # Append the weight to the list.
             weights.append(weight)
@@ -251,7 +254,7 @@ class ProportionalAllocator(BaseAllocator):
 
         # Calculate the weights for each envelope.
         weights = [
-            envelope.bill_instance.amount_due / total_amount_due
+            float(envelope.bill_instance.amount_due / total_amount_due)
             for envelope in envelopes
         ]
 
