@@ -1,0 +1,29 @@
+# Read the Docs configuration file
+# https://docs.readthedocs.io/en/stable/config-file/v2.html
+
+version: 2
+
+build:
+  os: ubuntu-22.04
+  tools:
+    python: "3.12"
+  commands:
+    # Install Poetry
+    - pip install poetry
+    # Install dependencies needed for building docs
+    # Only 'dev' group is needed (contains sphinx, sphinx-rtd-theme, nbsphinx)
+    - poetry install --with dev
+    # Build the documentation
+    - poetry run sphinx-build -b html docs/ docs/_build/html
+
+sphinx:
+  configuration: docs/conf.py
+  builder: html
+
+python:
+  install:
+    - method: pip
+      path: .
+      extra_requirements:
+        - dev
+
