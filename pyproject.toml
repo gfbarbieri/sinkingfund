@@ -39,6 +39,7 @@ pytest-cov = "^4.1.0"
 hypothesis = "^6.0.0"
 sphinx = "^7.0.0"
 sphinx-rtd-theme = "^2.0.0"
+nbsphinx = "^0.9.3"
 
 [tool.poetry.extras]
 analysis = ["pandas", "matplotlib"]

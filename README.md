@@ -228,18 +228,99 @@ poetry install --with dev,analysis,notebook
 # Note: Tests are not yet implemented.
 ```
 
-## TODO
+## Roadmap
 
-- [ ] Add unit tests for allocator, scheduler, and manager modules.
-- [ ] Add integration tests for the core SinkingFund class.
-- [ ] Add linter tests (ruff).
-- [ ] Add code formatter tests (black, ruff).
-- [ ] I am learning about pre-commit hooks and would like to use them to run tests, linter, and formatter on every commit.
-- [ ] Upgrade Sphinx documentation to easily convert example Jupyter notebooks into documentation pages.
-- [ ] Create example notebooks for general use and specific bill types.
-- [ ] Migrate to a database approach instead of current memory-based approach for scalability.
-- [ ] Build feature to include interest in balances.
-- [ ] Build feature to use interest on balances to in calculating the contribution schedules.
+The following roadmap outlines planned improvements across features, documentation, examples, and testing. Each section lists the top 3 priorities with explicit implementation details.
+
+### Features
+
+1. **Investible Cash Calculation**
+   - **Method**: Add `calculate_investible_cash()` to `SinkingFund` class in `sinkingfund/models/sinkingfund.py`
+   - **Signature**: `def calculate_investible_cash(self, start_date: datetime.date, end_date: datetime.date) -> dict[str, Decimal]`
+   - **Return Structure**: 
+     ```python
+     {
+         'investible_cash': Decimal,      # Cash not committed to bills in period
+         'dedicated_cash': Decimal,       # Cash committed to bills due in period
+         'total_free_cash': Decimal,      # Total cash available (investible + dedicated)
+         'period_start': datetime.date,
+         'period_end': datetime.date
+     }
+     ```
+   - **Implementation**: Iterate through date range, sum all contributions and payouts, identify bills with `due_date` within period, calculate envelope balances at period end, separate cash into investible (not needed for bills) vs dedicated (needed for bills)
+   - **Integration**: Extend `build_daily_account_report()` return dict to optionally include investible cash metrics, or add as separate method callable after report generation
+
+2. **Interest on Balances**
+   - **Envelope Changes**: Add `interest_rate: Decimal` parameter to `Envelope.__init__()` in `sinkingfund/models/envelope.py`, default `Decimal("0.00")`
+   - **New Method**: Add `calculate_interest_earned(as_of_date: datetime.date) -> Decimal` to `Envelope` class that computes compound interest on balance from `start_contrib_date` to `as_of_date` using daily compounding
+   - **Balance Update**: Modify `Envelope.get_balance_as_of_date()` to include interest earned: `balance = initial_allocation + contributions + interest_earned`
+   - **SinkingFund Changes**: Add `interest_rate: float | Decimal = 0.0` parameter to `SinkingFund.__init__()`, pass to envelopes during `create_envelopes()`
+   - **Manager Update**: Modify `EnvelopeManager.create_envelopes()` to accept and propagate `interest_rate` parameter
+
+3. **Interest-Aware Contribution Scheduling**
+   - **Scheduler Changes**: Modify `IndependentScheduler.schedule()` in `sinkingfund/schedules/indep_scheduler.py` to accept `interest_rate: Decimal` parameter
+   - **Calculation Update**: Adjust contribution amount formula to account for expected interest: `required_contribution = (remaining_amount - expected_interest) / num_contributions`
+   - **Interest Projection**: Add helper method `_project_interest_earned()` that calculates expected interest from current date to bill due date using envelope's interest rate
+   - **Integration**: Update `ScheduleManager.create_schedules()` to pass `interest_rate` from envelope to scheduler
+
+### Documentation
+
+1. **Sphinx Notebook Integration**
+   - **Configuration**: Add `nbsphinx` extension to `docs/conf.py` in `extensions` list
+   - **Notebook Directives**: Convert existing notebooks in `examples/` to Sphinx pages using `.. nbsphinx::` directive in `docs/examples.rst`
+   - **Build Process**: Update `docs/Makefile` to include notebook execution and conversion steps
+   - **Specific Files**: Convert `examples/your_first_sinking_fund.ipynb`, `examples/quick_start_csv_to_report.ipynb`, and `examples/envelopemanager_coordinating_multiple_envelopes.ipynb` as initial examples
+
+2. **Expanded API Reference**
+   - **Method Docstrings**: Enhance all public methods in `SinkingFund` class with complete parameter descriptions, return type details, and 3+ usage examples
+   - **Cross-References**: Add `:class:`, `:meth:`, and `:ref:` directives linking related components (e.g., `AllocationManager` methods referenced from `SinkingFund.allocate_balance()`)
+   - **File Updates**: Expand `docs/api/managers.rst`, `docs/api/schedules.rst`, and `docs/api/allocation.rst` with detailed examples for each public method
+
+3. **Advanced Usage Guides**
+   - **New File**: Create `docs/advanced_usage.rst` with sections: "Multi-Year Planning", "Multiple Sinking Fund Coordination", "External System Integration"
+   - **Content**: Include code examples showing `SinkingFund` instances with `start_date`/`end_date` spanning multiple years, combining results from multiple fund instances, and exporting data to CSV/JSON formats
+   - **Integration**: Add reference in `docs/index.rst` under "Advanced Topics" section
+
+### Examples
+
+1. **General Use Case Notebooks**
+   - **File**: Create `examples/complete_workflow_from_setup_to_analysis.ipynb`
+   - **Sections**: (1) Bill creation from CSV, (2) Envelope setup with multiple allocation strategies, (3) Schedule generation, (4) Report analysis with pandas, (5) Visualization with matplotlib
+   - **File**: Enhance `examples/quick_start_csv_to_report.ipynb` with error handling, validation examples, and edge cases
+
+2. **Bill Type-Specific Examples**
+   - **File**: Create `examples/insurance_premiums_planning.ipynb` showing semi-annual and annual insurance bills with different due dates
+   - **File**: Create `examples/property_tax_planning.ipynb` demonstrating annual property tax with quarterly contribution planning
+   - **File**: Create `examples/subscription_management.ipynb` showing monthly recurring subscriptions with different billing cycles
+
+3. **Advanced Workflow Examples**
+   - **File**: Create `examples/strategy_comparison_analysis.ipynb` comparing `sorted` vs `proportional` allocation strategies side-by-side with visualization
+   - **File**: Create `examples/multi_fund_coordination.ipynb` showing coordination of separate sinking funds for different purposes (personal vs business)
+   - **File**: Create `examples/long_term_planning_5year.ipynb` demonstrating 5-year planning horizon with multiple recurring bills
+
+### Testing
+
+1. **Unit Test Coverage**
+   - **File**: Create `tests/unit/managers/test_allocation_manager.py` with tests for `AllocationManager.set_allocator()`, `AllocationManager.allocate()`, and all strategy combinations
+   - **File**: Create `tests/unit/managers/test_schedule_manager.py` with tests for `ScheduleManager.set_scheduler()`, `ScheduleManager.create_schedules()`, and scheduler strategy selection
+   - **File**: Expand `tests/unit/managers/test_envelope_manager.py` to cover `get_balance_as_of_date()` edge cases, `total_cash_flow_on_date()` with various exclude parameters, and envelope removal scenarios
+   - **Target**: Achieve 90%+ code coverage for `sinkingfund/managers/` directory
+
+2. **Integration Tests**
+   - **File**: Expand `tests/integration/test_basic_workflow.py` with test methods:
+     - `test_quick_report_full_workflow()`: Validate `quick_report()` end-to-end with multiple bills
+     - `test_allocation_strategy_switching()`: Test switching between allocation strategies without data loss
+     - `test_scheduler_strategy_switching()`: Test switching between scheduler strategies
+     - `test_build_daily_account_report_with_active_only()`: Validate `active_only` parameter behavior
+   - **File**: Create `tests/integration/test_report_generation.py` with tests for report structure validation and data consistency checks
+
+3. **Code Quality Automation**
+   - **File**: Create `.pre-commit-config.yaml` in project root with hooks:
+     - `ruff check --fix` for linting
+     - `ruff format` for formatting
+     - `pytest` for running tests (optional, can be manual)
+   - **Installation**: Add `pre-commit` to `pyproject.toml` under `[tool.poetry.group.dev.dependencies]`
+   - **Documentation**: Add section to `README.md` under "Development Setup" explaining `pre-commit install` command
 
 ## License
 

@@ -29,10 +29,23 @@ extensions = [
     'sphinx.ext.autosummary',  # Generate summary tables
     'sphinx.ext.todo',         # Support for todo items
     'sphinx.ext.coverage',     # Coverage information
+    'nbsphinx',                # Jupyter notebook support
 ]
 
 templates_path = ['_templates']
 exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
+
+# -- nbsphinx configuration ----------------------------------------------
+# Path to notebook directory relative to docs directory
+nbsphinx_prolog = """
+.. note::
+   This example is generated from a Jupyter notebook. To view or modify
+   the source, see the notebook file in the ``examples/`` directory.
+"""
+
+# Execute notebooks during build (set to 'never' to skip execution)
+# Note: Requires pandoc for markdown conversion. Install with: brew install pandoc
+nbsphinx_execute = 'never'  # 'auto', 'always', or 'never' - set to 'never' if pandoc not installed
 
 # -- Autodoc configuration --------------------------------------------------
 autodoc_default_options = {

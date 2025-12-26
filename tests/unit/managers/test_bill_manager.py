@@ -13,7 +13,9 @@ validation, instance generation, and source handling logic.
 from __future__ import annotations
 
 import datetime
+import tempfile
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -175,13 +177,30 @@ class TestBillManagerCreateBills:
 
         manager = BillManager()
 
-        # BUSINESS GOAL: Use existing example data to exercise the
-        # file-loading branch without relying on dynamic content.
-        bills = manager.create_bills("examples/data/boa_fund.csv")
+        # BUSINESS GOAL: Create temporary CSV file to exercise the
+        # file-loading branch without relying on external example data.
+        csv_content = (
+            "bill_id,service,amount_due,recurring,due_date,start_date,"
+            "end_date,frequency,interval,occurrences\n"
+            "prop_tax,Property Tax,3600.00,True,,2025-11-01,,annual,1,\n"
+            "car_ins,Car Insurance,750.00,True,,2025-04-24,,monthly,6,\n"
+        )
 
-        assert isinstance(bills, list)
-        assert bills
-        assert all(isinstance(bill, Bill) for bill in bills)
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', delete=False
+        ) as tmp_file:
+            tmp_file.write(csv_content)
+            tmp_path = tmp_file.name
+
+        try:
+            bills = manager.create_bills(tmp_path)
+
+            assert isinstance(bills, list)
+            assert bills
+            assert all(isinstance(bill, Bill) for bill in bills)
+        finally:
+            # Clean up temporary file.
+            Path(tmp_path).unlink(missing_ok=True)
 
     def test_create_bills_from_dict_list(self) -> None:
         """

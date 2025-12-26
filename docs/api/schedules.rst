@@ -21,3 +21,6 @@ Generates independent contribution schedules for individual envelopes.
 .. automodule:: sinkingfund.schedules.indep_scheduler
    :members:
    :show-inheritance:
+
+.. autoclass:: sinkingfund.schedules.indep_scheduler.IndependentScheduler
+   :no-index:

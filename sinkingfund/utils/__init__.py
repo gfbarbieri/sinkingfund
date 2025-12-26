@@ -52,8 +52,8 @@ The typical data loading flow follows this pattern:
    appropriate reader function for the detected format.
 3. **Data Reading**: Reader function parses file and returns standardized
    list[dict] with normalized Python types.
-4. **Domain Conversion**: loaders.load_bills_from_data() converts
-   dictionaries to properly configured domain objects.
+4. **Domain Conversion**: BillManager.create_bills() converts
+   dictionaries to properly configured Bill domain objects.
 
 Examples
 --------
@@ -62,26 +62,33 @@ High-level file loading:
 
 .. code-block:: python
 
-   from sinkingfund.utils import load_bills_from_file
+   from sinkingfund.utils import load_bill_data_from_file
+   from sinkingfund.managers import BillManager
    
-   # Automatic format detection and loading.
-   bills = load_bills_from_file("data/bills.csv")
-   bills = load_bills_from_file("data/reports.xlsx")
-   bills = load_bills_from_file("config/bills.json")
+   # Automatic format detection and loading of raw data.
+   bill_data = load_bill_data_from_file("data/bills.csv")
+   
+   # Convert to Bill objects using BillManager.
+   bill_manager = BillManager()
+   bills = bill_manager.create_bills(bill_data)
 
 Low-level component usage:
 
 .. code-block:: python
 
    from sinkingfund.utils import (
-       detect_file_format, get_reader_for_format, load_bills_from_data
+       detect_file_format, get_reader_for_format
    )
+   from sinkingfund.managers import BillManager
    
    # Manual pipeline control.
    format_name = detect_file_format("data/bills.csv")
    reader = get_reader_for_format(format_name)
    data = reader("data/bills.csv")
-   bills = load_bills_from_data(data)
+   
+   # Convert to Bill objects.
+   bill_manager = BillManager()
+   bills = bill_manager.create_bills(data)
 
 Date arithmetic utilities:
 
@@ -119,6 +126,11 @@ from .format_registry import (
 # Domain model loaders.
 from .loaders import load_bill_data_from_file
 
+# Note: load_bills_from_data and load_bills_from_file are referenced in
+# documentation but do not exist. The actual function is
+# load_bill_data_from_file which returns dict[str, Any] (raw data), not
+# Bill objects. Bill creation is handled by BillManager.create_bills().
+
 # Data readers for multiple formats.
 from .readers import (
     read_csv_to_dict,
@@ -152,7 +164,6 @@ __all__ = [
     'read_json_to_dict',
     
     # Domain loaders.
-    'load_bills_from_data',
-    'load_bills_from_file'
+    'load_bill_data_from_file',
 
 ]

@@ -21,10 +21,11 @@ parameter mapping, type conversion, and business rule application.
 This layer handles the complexity of converting external data
 representations to internal object models.
 
-**Unified Entry Point**: The load_bills_from_file function provides a
-single interface for loading bills from any supported file format,
-automatically detecting format and applying appropriate readers before
-domain model conversion.
+**Unified Entry Point**: The load_bill_data_from_file function provides a
+single interface for loading bill data from any supported file format,
+automatically detecting format and applying appropriate readers. The
+function returns raw dictionary data which can then be converted to Bill
+objects using BillManager.create_bills().
 
 Key Features
 ------------
@@ -45,36 +46,24 @@ Key Features
 Examples
 --------
 
-Loading bills from standardized data:
+Loading bill data from files:
 
 .. code-block:: python
 
-   # Data from any reader (CSV, Excel, JSON)
-   bill_data = [
-       {
-           'bill_id': 'rent',
-           'service': 'Monthly Rent',
-           'amount_due': 1200.00,
-           'recurring': True,
-           'start_date': date(2025, 1, 1),
-           'frequency': 'monthly'
-       }
-   ]
+   from sinkingfund.utils import load_bill_data_from_file
+   from sinkingfund.managers import BillManager
    
-   bills = load_bills_from_data(bill_data)
-   # Returns list of properly configured Bill objects
-
-Direct file loading with automatic format detection:
-
-.. code-block:: python
-
-   # Automatically detects CSV format and loads
-   bills = load_bills_from_file("data/bills.csv")
+   # Automatically detects CSV format and loads raw data
+   bill_data = load_bill_data_from_file("data/bills.csv")
    
    # Automatically detects Excel format  
-   bills = load_bills_from_file("data/quarterly.xlsx")
+   bill_data = load_bill_data_from_file("data/quarterly.xlsx")
    
-   # Same interface regardless of format
+   # Convert to Bill objects using BillManager
+   bill_manager = BillManager()
+   bills = bill_manager.create_bills(bill_data)
+   
+   # Now work with Bill objects
    for bill in bills:
        print(f"{bill.service}: {bill.amount_due}")
 
