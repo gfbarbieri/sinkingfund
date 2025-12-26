@@ -10,20 +10,11 @@ build:
   commands:
     # Install Poetry
     - pip install poetry
-    # Install dependencies needed for building docs
+    # Install dependencies and the package itself
     # Only 'dev' group is needed (contains sphinx, sphinx-rtd-theme, nbsphinx)
     - poetry install --with dev
-    # Build the documentation
-    - poetry run sphinx-build -b html docs/ docs/_build/html
 
 sphinx:
   configuration: docs/conf.py
   builder: html
-
-python:
-  install:
-    - method: pip
-      path: .
-      extra_requirements:
-        - dev
-
+  fail_on_warning: false

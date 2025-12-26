@@ -6,7 +6,7 @@ authors = ["Greg Barbieri <gfbarbieri@gmail.com>"]
 readme = "README.md"
 license = "MIT"
 repository = "https://github.com/gfbarbieri/sinkingfund"
-homepage = "https://github.com/gfbarbieri/sinkingfund"
+homepage = "https://sinkingfund.readthedocs.io/"
 keywords = ["finance", "budgeting", "bills", "envelope-budgeting", "sinking-fund", "financial-planning"]
 classifiers = [
     "Development Status :: 4 - Beta",
