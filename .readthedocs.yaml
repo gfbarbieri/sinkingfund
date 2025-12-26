@@ -13,6 +13,9 @@ build:
     # Install dependencies and the package itself
     # Only 'dev' group is needed (contains sphinx, sphinx-rtd-theme, nbsphinx)
     - poetry install --with dev
+    # Build documentation using Poetry's environment
+    # Output to the location Read the Docs expects
+    - poetry run sphinx-build -b html docs/ ${READTHEDOCS_OUTPUT}/html
 
 sphinx:
   configuration: docs/conf.py
