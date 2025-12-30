@@ -225,8 +225,26 @@ git clone https://github.com/gfbarbieri/sinkingfund.git
 cd sinkingfund
 poetry install --with dev,analysis,notebook
 
-# Note: Tests are not yet implemented.
+# Run all example notebooks to verify they work:
+poetry run python scripts/run_notebooks.py
+
+# Or use the shell script:
+./scripts/run_notebooks.sh
 ```
+
+**Running Example Notebooks**
+
+To test all example notebooks at once:
+
+```bash
+# Python script (recommended - better error reporting):
+poetry run python scripts/run_notebooks.py
+
+# Or shell script:
+./scripts/run_notebooks.sh
+```
+
+The script will execute all notebooks in the `examples/` directory and report which ones pass or fail, with detailed error messages for any failures.
 
 ## Roadmap
 
