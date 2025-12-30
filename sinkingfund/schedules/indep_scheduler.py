@@ -290,16 +290,19 @@ class IndependentScheduler(BaseScheduler):
             # BUSINESS GOAL: Ensure exact funding by adjusting for
             # rounding differences. Any pennies lost to rounding are
             # added to the last contribution.
-            diff = remaining - sum(
-                contrib[1] for contrib in contrib_amounts
-            )
+            # EDGE CASE: Skip adjustment if no contribution intervals
+            # exist (e.g., fully funded envelope or invalid window).
+            if contrib_amounts:
+                diff = remaining - sum(
+                    contrib[1] for contrib in contrib_amounts
+                )
 
-            # DESIGN CHOICE: Add difference to the last contribution
-            # rather than the first to maintain consistent early
-            # payments.
-            contrib_amounts[-1] = (
-                contrib_amounts[-1][0], contrib_amounts[-1][1] + diff
-            )
+                # DESIGN CHOICE: Add difference to the last contribution
+                # rather than the first to maintain consistent early
+                # payments.
+                contrib_amounts[-1] = (
+                    contrib_amounts[-1][0], contrib_amounts[-1][1] + diff
+                )
 
             # Create the contribution cash flows based on the calculated
             # amounts and timing.
