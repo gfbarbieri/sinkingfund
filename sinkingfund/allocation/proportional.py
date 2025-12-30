@@ -131,7 +131,7 @@ class ProportionalAllocator(BaseAllocator):
             self.weight_func = method
     
     def allocate(
-        self, envelopes: list[Envelope], balance: float, **kwargs: Any
+        self, envelopes: list[Envelope], balance: Decimal, **kwargs: Any
     ) -> AllocationResult:
         """
         Allocate balance to envelopes based on calculated weights.
@@ -140,7 +140,7 @@ class ProportionalAllocator(BaseAllocator):
         ----------
         envelopes: list[Envelope]
             The envelopes to allocate to.
-        balance: float
+        balance: Decimal
             The balance to allocate.
         """
 
@@ -151,7 +151,9 @@ class ProportionalAllocator(BaseAllocator):
         shares = [weight / sum(weights) for weight in weights]
 
         # Allocate funds proportionally to shares.
-        allocation_amounts = [balance * share for share in shares]
+        # Convert balance to float for calculation with float shares.
+        balance_float = float(balance)
+        allocation_amounts = [balance_float * share for share in shares]
 
         # Set the allocations for each envelope.
         allocations = {}
