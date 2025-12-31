@@ -22,7 +22,8 @@ import pytest
 
 from sinkingfund.utils.readers import (
     read_csv_to_dict, read_excel_to_dict, read_json_to_dict,
-    _coerce_scalar, _coerce_dataframe
+    _coerce_scalar, _coerce_dataframe, _parse_date_columns,
+    _normalize_int_columns
 )
 
 ########################################################################
@@ -621,3 +622,144 @@ class TestReadersEdgeCases:
         # Test: Verify error is propagated.
         with pytest.raises(ValueError, match="Invalid JSON"):
             read_json_to_dict('malformed.json')
+
+
+########################################################################
+## HELPER FUNCTION TESTS - ADDITIONAL
+########################################################################
+
+class TestParseDateColumns:
+    """
+    Test _parse_date_columns helper function.
+    """
+
+    def test_parse_date_columns_basic(self) -> None:
+        """
+        Test parsing date columns in DataFrame.
+        """
+        df = pd.DataFrame({
+            'date_col': ['2024-01-15', '2024-02-15'],
+            'other_col': [1, 2]
+        })
+        
+        result = _parse_date_columns(df, ['date_col'])
+        
+        assert pd.api.types.is_datetime64_any_dtype(result['date_col'])
+        assert not pd.api.types.is_datetime64_any_dtype(result['other_col'])
+
+    def test_parse_date_columns_missing_column(self) -> None:
+        """
+        Test parsing when column doesn't exist.
+        """
+        df = pd.DataFrame({
+            'other_col': [1, 2]
+        })
+        
+        result = _parse_date_columns(df, ['nonexistent'])
+        
+        assert 'nonexistent' not in result.columns
+
+    def test_parse_date_columns_multiple_columns(self) -> None:
+        """
+        Test parsing multiple date columns.
+        """
+        df = pd.DataFrame({
+            'start_date': ['2024-01-15', '2024-02-15'],
+            'end_date': ['2024-12-31', '2024-12-31'],
+            'other_col': [1, 2]
+        })
+        
+        result = _parse_date_columns(df, ['start_date', 'end_date'])
+        
+        assert pd.api.types.is_datetime64_any_dtype(result['start_date'])
+        assert pd.api.types.is_datetime64_any_dtype(result['end_date'])
+        assert not pd.api.types.is_datetime64_any_dtype(result['other_col'])
+
+    def test_parse_date_columns_invalid_dates(self) -> None:
+        """
+        Test parsing with invalid dates (should coerce to NaT).
+        """
+        df = pd.DataFrame({
+            'date_col': ['invalid', '2024-01-15', 'also-invalid']
+        })
+        
+        result = _parse_date_columns(df, ['date_col'])
+        
+        assert pd.api.types.is_datetime64_any_dtype(result['date_col'])
+        # Invalid dates should be NaT.
+        assert pd.isna(result['date_col'].iloc[0])
+        assert pd.isna(result['date_col'].iloc[2])
+
+
+class TestNormalizeIntColumns:
+    """
+    Test _normalize_int_columns helper function.
+    """
+
+    def test_normalize_int_columns_basic(self) -> None:
+        """
+        Test normalizing integer columns.
+        """
+        df = pd.DataFrame({
+            'int_col': [1, 2, 3],
+            'other_col': [1.5, 2.5, 3.5]
+        })
+        
+        result = _normalize_int_columns(df, ['int_col'])
+        
+        assert all(isinstance(x, int) for x in result['int_col'])
+        assert all(isinstance(x, float) for x in result['other_col'])
+
+    def test_normalize_int_columns_with_none(self) -> None:
+        """
+        Test normalizing integer columns with None values.
+        """
+        df = pd.DataFrame({
+            'int_col': [1, None, 3]
+        })
+        
+        result = _normalize_int_columns(df, ['int_col'])
+        
+        assert result['int_col'].iloc[0] == 1
+        assert pd.isna(result['int_col'].iloc[1])
+        assert result['int_col'].iloc[2] == 3
+
+    def test_normalize_int_columns_missing_column(self) -> None:
+        """
+        Test normalizing when column doesn't exist.
+        """
+        df = pd.DataFrame({
+            'other_col': [1, 2]
+        })
+        
+        result = _normalize_int_columns(df, ['nonexistent'])
+        
+        assert 'nonexistent' not in result.columns
+
+    def test_normalize_int_columns_float_to_int(self) -> None:
+        """
+        Test converting float values to int.
+        """
+        df = pd.DataFrame({
+            'int_col': [1.0, 2.5, 3.9]
+        })
+        
+        result = _normalize_int_columns(df, ['int_col'])
+        
+        assert result['int_col'].iloc[0] == 1
+        assert result['int_col'].iloc[1] == 2  # Truncated.
+        assert result['int_col'].iloc[2] == 3  # Truncated.
+
+    def test_normalize_int_columns_with_na(self) -> None:
+        """
+        Test normalizing with pandas NA values.
+        """
+        df = pd.DataFrame({
+            'int_col': [1, pd.NA, 3]
+        })
+        
+        result = _normalize_int_columns(df, ['int_col'])
+        
+        assert result['int_col'].iloc[0] == 1
+        assert pd.isna(result['int_col'].iloc[1])
+        assert result['int_col'].iloc[2] == 3

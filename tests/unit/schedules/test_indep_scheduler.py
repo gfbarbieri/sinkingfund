@@ -19,6 +19,7 @@ import pytest
 
 from sinkingfund.models import BillInstance, Envelope, CashFlow
 from sinkingfund.schedules.indep_scheduler import IndependentScheduler
+from sinkingfund.schedules.base import ScheduleResult
 
 ########################################################################
 ## SCHEDULE METHOD TESTS
@@ -39,10 +40,11 @@ class TestScheduleMethod:
         scheduler = IndependentScheduler()
         envelopes = []
 
-        # Test: Schedule should return empty dict.
-        schedules = scheduler.schedule(envelopes=envelopes)
-        assert schedules == {}
-        assert len(schedules) == 0
+        # Test: Schedule should return empty ScheduleResult.
+        result = scheduler.schedule(envelopes=envelopes)
+        assert isinstance(result, ScheduleResult)
+        assert result.schedules == {}
+        assert len(result.schedules) == 0
 
     def test_single_envelope_basic_schedule(
         self, empty_envelope: Envelope
@@ -53,7 +55,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[empty_envelope])
+        result = scheduler.schedule(envelopes=[empty_envelope])
+        schedules = result.schedules
 
         # Test: Should return one schedule.
         assert len(schedules) == 1
@@ -101,7 +104,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope])
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
         # Test: Should return schedule.
         assert envelope in schedules
@@ -139,7 +143,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope])
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
         # Test: Should return schedule.
         assert envelope in schedules
@@ -157,9 +162,9 @@ class TestScheduleMethod:
         """
         Test scheduling an envelope for a bill due on the start date.
         
-        Note: This edge case currently causes an IndexError when
-        start_date == end_date because there are no contribution
-        intervals. This test documents the current behavior.
+        Note: When start_date == end_date, there are no contribution
+        intervals, so the scheduler creates a schedule with only the
+        payment cash flow.
         """
 
         # Create bill instance due today.
@@ -181,19 +186,28 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
-        # Test: Currently raises IndexError when no intervals exist.
-        # This edge case should be handled by the scheduler.
-        with pytest.raises(IndexError):
-            scheduler.schedule(envelopes=[envelope])
+        # Test: Should return schedule with only payment (no contributions).
+        assert envelope in schedules
+        schedule = schedules[envelope]
+        
+        # Test: Should have only payment, no contributions.
+        contributions = [cf for cf in schedule.cash_flows if cf.amount > 0]
+        payments = [cf for cf in schedule.cash_flows if cf.amount < 0]
+        
+        assert len(contributions) == 0
+        assert len(payments) == 1
+        assert payments[0].amount == -bill_due_today.amount_due
 
     def test_very_short_contribution_period(self) -> None:
         """
         Test scheduling with a very short contribution period (1 day).
         
         Note: When start_date == end_date, there are no contribution
-        intervals, which currently causes an IndexError. This test
-        documents the current behavior.
+        intervals, so the scheduler creates a schedule with only the
+        payment cash flow.
         """
 
         # Create bill instance.
@@ -215,11 +229,20 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
-        # Test: Currently raises IndexError when no intervals exist.
-        # This edge case should be handled by the scheduler.
-        with pytest.raises(IndexError):
-            scheduler.schedule(envelopes=[envelope])
+        # Test: Should return schedule with only payment (no contributions).
+        assert envelope in schedules
+        schedule = schedules[envelope]
+        
+        # Test: Should have only payment, no contributions.
+        contributions = [cf for cf in schedule.cash_flows if cf.amount > 0]
+        payments = [cf for cf in schedule.cash_flows if cf.amount < 0]
+        
+        assert len(contributions) == 0
+        assert len(payments) == 1
+        assert payments[0].amount == -bill.amount_due
 
     def test_valid_single_day_period(self) -> None:
         """
@@ -246,7 +269,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope])
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
         # Test: Should return schedule.
         assert envelope in schedules
@@ -266,9 +290,9 @@ class TestScheduleMethod:
         """
         Test scheduling when start and end contribution dates are equal.
         
-        Note: This edge case currently causes an IndexError when
-        start_date == end_date because there are no contribution
-        intervals. This test documents the current behavior.
+        Note: When start_date == end_date, there are no contribution
+        intervals, so the scheduler creates a schedule with only the
+        payment cash flow.
         """
 
         # Create bill instance.
@@ -290,11 +314,20 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
-        # Test: Currently raises IndexError when no intervals exist.
-        # This edge case should be handled by the scheduler.
-        with pytest.raises(IndexError):
-            scheduler.schedule(envelopes=[envelope])
+        # Test: Should return schedule with only payment (no contributions).
+        assert envelope in schedules
+        schedule = schedules[envelope]
+        
+        # Test: Should have only payment, no contributions.
+        contributions = [cf for cf in schedule.cash_flows if cf.amount > 0]
+        payments = [cf for cf in schedule.cash_flows if cf.amount < 0]
+        
+        assert len(contributions) == 0
+        assert len(payments) == 1
+        assert payments[0].amount == -bill.amount_due
 
     def test_multiple_envelopes(self) -> None:
         """
@@ -333,7 +366,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule both envelopes.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope1, envelope2])
+        result = scheduler.schedule(envelopes=[envelope1, envelope2])
+        schedules = result.schedules
 
         # Test: Should return schedules for both envelopes.
         assert len(schedules) == 2
@@ -372,7 +406,8 @@ class TestScheduleMethod:
             )
 
             scheduler = IndependentScheduler()
-            schedules = scheduler.schedule(envelopes=[envelope])
+            result = scheduler.schedule(envelopes=[envelope])
+            schedules = result.schedules
 
             # Test: Should create valid schedule.
             assert envelope in schedules
@@ -413,7 +448,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope])
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
         # Test: Should return schedule.
         assert envelope in schedules
@@ -456,7 +492,8 @@ class TestScheduleMethod:
 
         # Create scheduler and schedule the envelope.
         scheduler = IndependentScheduler()
-        schedules = scheduler.schedule(envelopes=[envelope])
+        result = scheduler.schedule(envelopes=[envelope])
+        schedules = result.schedules
 
         # Test: Should return schedule.
         assert envelope in schedules

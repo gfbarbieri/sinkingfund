@@ -17,7 +17,7 @@ from decimal import Decimal
 
 import pytest
 
-from sinkingfund.models import Bill, BillInstance, Envelope
+from sinkingfund.models import Bill, BillInstance, Envelope, SinkingFund
 
 ########################################################################
 ## BASIC WORKFLOW TESTS
@@ -170,3 +170,253 @@ class TestSimpleIntegration:
         # Test: Verify total funding needed.
         total_needed = reg_envelope.remaining() + electric_envelope.remaining()
         assert total_needed == Decimal("275.00")
+
+
+########################################################################
+## SINKING FUND INTEGRATION TESTS
+########################################################################
+
+class TestSinkingFundIntegration:
+    """
+    Test complete SinkingFund workflow integration scenarios.
+    """
+
+    def test_quick_report_full_workflow(self) -> None:
+        """
+        Test complete end-to-end workflow using quick_report.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=5000.0
+        )
+        
+        # Add multiple bills.
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        fund.add_bills({
+            'bill_id': 'water',
+            'service': 'Monthly Water',
+            'amount_due': 75.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 1),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        # Generate quick report.
+        report = fund.quick_report(
+            contribution_interval=14,
+            allocation_strategy="sorted",
+            scheduler_strategy="independent_scheduler",
+            active_only=False
+        )
+        
+        assert isinstance(report, dict)
+        assert len(report) > 0
+        
+        # Verify report structure.
+        first_date = min(report.keys())
+        first_entry = report[first_date]
+        assert 'account_balance' in first_entry
+        assert 'contributions' in first_entry
+        assert 'payouts' in first_entry
+
+    def test_allocation_strategy_switching(self) -> None:
+        """
+        Test switching between allocation strategies.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=3000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        # Allocate with sorted strategy.
+        result1 = fund.allocate(strategy="sorted")
+        assert result1 is not None
+        
+        # Switch to proportional strategy.
+        result2 = fund.allocate(strategy="proportional", method="proportional")
+        assert result2 is not None
+        
+        # Both should succeed.
+        assert hasattr(result1, 'envelopes')
+        assert hasattr(result2, 'envelopes')
+
+    def test_scheduler_strategy_switching(self) -> None:
+        """
+        Test switching between scheduler strategies.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=2000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        fund.allocate(strategy="sorted")
+        fund.update_contribution_dates(contribution_interval=14)
+        
+        # Create schedules.
+        result = fund.schedule(strategy="independent_scheduler")
+        assert result is not None
+        assert hasattr(result, 'schedules')
+
+    def test_build_daily_account_report_with_active_only(self) -> None:
+        """
+        Test report with active_only parameter.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 3, 31),
+            balance=2000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        fund.allocate(strategy="sorted")
+        fund.update_contribution_dates(contribution_interval=14)
+        fund.schedule()
+        
+        # Generate report with active_only=True.
+        report = fund.report(active_only=True)
+        
+        assert isinstance(report, dict)
+        
+        # All dates should have activity.
+        for date, data in report.items():
+            assert (
+                data['contributions']['count'] > 0
+                or data['payouts']['count'] > 0
+            )
+
+    def test_rebuild_report(self) -> None:
+        """
+        Test rebuild_report method for regenerating reports.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=4000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        })
+        
+        # Generate report with different parameters using quick_report.
+        report = fund.quick_report(
+            allocation_strategy="proportional",
+            scheduler_strategy="independent_scheduler",
+            contribution_interval=7,
+            active_only=False,
+            method="equal"
+        )
+        
+        assert isinstance(report, dict)
+        assert len(report) > 0
+
+    def test_sync_envelopes_with_bills(self) -> None:
+        """
+        Test syncing envelopes with bills.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=2000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        }, )
+        
+        # Delete bill but keep envelopes.
+        # delete_bills always removes envelopes now.
+        fund.delete_bills(['electric'])
+        
+        # Sync should be a no-op since envelopes were already removed.
+        fund.sync_envelopes_with_bills()
+        
+        envelopes = fund.get_envelopes()
+        assert len(envelopes) == 0
+
+    def test_validate_state(self) -> None:
+        """
+        Test state validation.
+        """
+        fund = SinkingFund(
+            start_date=datetime.date(2024, 1, 1),
+            end_date=datetime.date(2024, 12, 31),
+            balance=2000.0
+        )
+        
+        fund.add_bills({
+            'bill_id': 'electric',
+            'service': 'Monthly Electric',
+            'amount_due': 150.00,
+            'recurring': True,
+            'start_date': datetime.date(2024, 1, 15),
+            'frequency': 'monthly',
+            'interval': 1
+        }, )
+        
+        # Validate state should be valid.
+        is_valid, issues = fund.validate_state()
+        assert is_valid is True
+        assert len(issues) == 0
+        
+        # Create invalid state by deleting bill but keeping envelope.
+        # delete_bills always removes envelopes now.
+        fund.delete_bills(['electric'])
+        
+        # Validate should pass since envelopes were removed with bills.
+        is_valid, issues = fund.validate_state()
+        assert is_valid is True
