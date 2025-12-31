@@ -26,6 +26,12 @@ A sinking fund is a strategic savings approach where you set aside money regular
 - **Strategy Comparison**: Compare different allocation approaches without modifying data.
 - **Reporting**: Generate detailed daily account reports and cash flow summaries.
 
+## Documentation
+
+- **[Full Documentation](https://sinkingfund.readthedocs.io/)** - Complete API reference, guides, and tutorials
+- **[Examples](https://sinkingfund.readthedocs.io/en/latest/examples.html)** - Interactive Jupyter notebook examples
+- **[API Reference](https://sinkingfund.readthedocs.io/en/latest/api_reference.html)** - Detailed API documentation
+
 ## Installation
 
 ### Basic Installation (Pure Python, No Dependencies)
@@ -74,6 +80,8 @@ poetry install --with dev,analysis,notebook
 
 ## Quick Start
 
+For more detailed examples and tutorials, see the [Examples section](https://sinkingfund.readthedocs.io/en/latest/examples.html) in the documentation.
+
 ### Basic Workflow
 
 ```python
@@ -90,28 +98,30 @@ fund = SinkingFund(
 
 # Define your bills.
 property_tax = {
-    bill_id="prop_tax",
-    service="Property Tax",
-    amount_due=3600.00,
-    recurring=True,
-    start_date=datetime.date(2024, 11, 1),  # The bill's first due date.
-    frequency="annual",
-    interval=1  # Once a year.
+    "bill_id": "prop_tax",
+    "service": "Property Tax",
+    "amount_due": 3600.00,
+    "recurring": True,
+    "start_date": datetime.date(2024, 11, 1),  # The bill's first due date.
+    "frequency": "annual",
+    "interval": 1  # Once a year.
 }
 
 car_insurance = {
-    bill_id="car_ins", 
-    service="Car Insurance",
-    amount_due=750.00,
-    recurring=True,
-    start_date=datetime.date(2024, 4, 24),
-    frequency="monthly",
-    interval=6  # Every 6 months.
+    "bill_id": "car_ins", 
+    "service": "Car Insurance",
+    "amount_due": 750.00,
+    "recurring": True,
+    "start_date": datetime.date(2024, 4, 24),
+    "frequency": "monthly",
+    "interval": 6  # Every 6 months.
 }
 
-# Use quick start to get a full daily contribution schedule with
-# defaults.
-report = fund.quick_start(bill_source=[property_tax, car_insurance])
+# Add bills to the fund (creates envelopes automatically).
+fund.add_bills([property_tax, car_insurance])
+
+# Generate a complete report with allocation and scheduling.
+report = fund.quick_report()
 ```
 
 ### Loading Bills from CSV
@@ -128,7 +138,7 @@ fund = SinkingFund(
     balance=2000.00
 )
 
-fund.create_bills(bill_source='data/bills.csv')
+fund.add_bills('data/bills.csv')
 ```
 
 **Required CSV columns:**
@@ -157,13 +167,13 @@ Multiple allocation strategies are available:
 
 ```python
 # Due date priority (default) - fund urgent bills first.
-fund.set_allocation_strategy("sorted", sort_key="cascade")
+fund.allocate(strategy="sorted", sort_key="cascade")
 
 # Smallest bills first - reduce number of obligations quickly.  
-fund.set_allocation_strategy("sorted", sort_key="debt_snowball")
+fund.allocate(strategy="sorted", sort_key="debt_snowball")
 
 # Equal percentage across all bills.
-fund.set_allocation_strategy("proportional")
+fund.allocate(strategy="proportional")
 ```
 
 ### Schedulers
@@ -174,8 +184,7 @@ Schedulers determine how contributions are distributed over time:
 
 ```python
 # Even distribution for each envelope independently.
-fund.set_scheduler("independent")
-fund.create_schedules()
+fund.schedule(strategy="independent_scheduler")
 ```
 
 ## Architecture
