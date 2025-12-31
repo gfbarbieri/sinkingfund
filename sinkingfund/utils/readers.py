@@ -93,6 +93,8 @@ from __future__ import annotations
 
 import datetime
 import os
+import warnings
+
 import pandas as pd
 
 from typing import Any, List, Optional, Union
@@ -209,7 +211,16 @@ def _parse_date_columns(df: pd.DataFrame, columns: list[str]) -> pd.DataFrame:
 
         # BUSINESS GOAL: Convert the column to a datetime object.
         if col in df_copy.columns:
-            df_copy[col] = pd.to_datetime(df_copy[col], errors='coerce')
+            # DESIGN CHOICE: Suppress expected warning when pandas can't
+            # infer date format, as this function handles various formats
+            # and invalid dates gracefully via errors='coerce'.
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    'ignore',
+                    message='Could not infer format',
+                    category=UserWarning
+                )
+                df_copy[col] = pd.to_datetime(df_copy[col], errors='coerce')
     
     return df_copy
 

@@ -44,8 +44,35 @@ expenses through your sinking fund system.
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from typing import Any
 
-from ..models import CashFlow, Envelope
+from ..models import CashFlow, Envelope, CashFlowSchedule
+
+########################################################################
+## SCHEDULE RESULT DATA CLASS
+########################################################################
+
+@dataclass(frozen=True)
+class ScheduleResult:
+    """
+    Results of a scheduling strategy execution.
+    
+    Contains the results of applying a scheduling strategy to a set
+    of envelopes, including the generated schedules and any metadata
+    about the scheduling process.
+    
+    Attributes
+    ----------
+    schedules : dict[Envelope, CashFlowSchedule]
+        Dictionary mapping each envelope to its generated cash flow
+        schedule.
+    metadata : dict[str, Any]
+        Metadata about the scheduling operation, including strategy
+        name and configuration.
+    """
+    schedules: dict[Envelope, CashFlowSchedule]
+    metadata: dict[str, Any]
 
 ########################################################################
 ## ABSTRACT BASE CLASS
@@ -125,7 +152,7 @@ class BaseScheduler(ABC):
     """
     
     @abstractmethod
-    def schedule(self, envelopes: list[Envelope], **kwargs) -> None:
+    def schedule(self, envelopes: list[Envelope], **kwargs) -> ScheduleResult:
         """
         Create and apply contribution schedules to the provided envelopes
         using the implemented scheduling strategy.
@@ -173,10 +200,11 @@ class BaseScheduler(ABC):
             
         Returns
         -------
-        None
-            Schedules are applied directly to envelopes by setting their
-            schedule attribute. This in-place modification maintains
-            object relationships and optimizes memory usage.
+        ScheduleResult
+            A result object containing the generated schedules and
+            metadata about the scheduling operation. The schedules
+            dictionary maps each envelope to its corresponding cash flow
+            schedule.
             
         Raises
         ------

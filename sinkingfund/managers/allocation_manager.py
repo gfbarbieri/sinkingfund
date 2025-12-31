@@ -85,6 +85,7 @@ from decimal import Decimal
 from typing import Any
 
 from ..models import Envelope
+from ..allocation.base import AllocationResult
 from ..allocation.sorted import SortedAllocator
 from ..allocation.proportional import ProportionalAllocator
 
@@ -247,7 +248,7 @@ class AllocationManager:
 
     def allocate(
         self, envelopes: list[Envelope], balance: Decimal, **kwargs
-    ) -> None:
+    ) -> AllocationResult:
         """
         Distribute available funds across envelope collection using
         strategy.
@@ -278,6 +279,14 @@ class AllocationManager:
             Refer to individual strategy documentation for complete
             parameter specifications.
 
+        Returns
+        -------
+        AllocationResult
+            A result object containing the allocation assignments and
+            metadata. The ``envelopes`` attribute maps each envelope to
+            its allocated amount, and the ``metadata`` attribute contains
+            information about the allocation strategy used.
+            
         Raises
         ------
         ValueError
@@ -307,10 +316,12 @@ class AllocationManager:
         .. code-block:: python
 
            # Basic allocation with default strategy behavior.
-           manager.allocate(
+           result = manager.allocate(
                envelopes=envelope_list,
                balance=Decimal("1000.00")
            )
+           # Access allocations: result.envelopes
+           # Access metadata: result.metadata
         """
 
         # BUSINESS GOAL: Validate input parameters to provide clear

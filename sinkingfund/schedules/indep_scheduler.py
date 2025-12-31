@@ -126,7 +126,9 @@ from __future__ import annotations
 import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
-from .base import BaseScheduler
+from typing import Any
+
+from .base import BaseScheduler, ScheduleResult
 from ..models import Envelope, CashFlow, CashFlowSchedule
 from ..utils import increment_date
 
@@ -191,7 +193,7 @@ class IndependentScheduler(BaseScheduler):
     
     def schedule(
         self, envelopes: list[Envelope]
-    ) -> dict[Envelope, CashFlowSchedule]:
+    ) -> ScheduleResult:
         """
         Create evenly distributed contribution schedules for each
         envelope independently.
@@ -225,9 +227,9 @@ class IndependentScheduler(BaseScheduler):
         
         Returns
         -------
-        dict[Envelope, CashFlowSchedule]
-            A dictionary mapping each envelope to its corresponding
-            schedule.
+        ScheduleResult
+            A result object containing the generated schedules and
+            metadata about the scheduling operation.
         
         Notes
         -----
@@ -344,7 +346,10 @@ class IndependentScheduler(BaseScheduler):
             # Add the schedule to the schedules dictionary.
             schedules[envelope] = schedule
 
-        return schedules
+        return ScheduleResult(
+            schedules=schedules,
+            metadata=self.get_metadata()
+        )
 
     def calculate_daily_contribution(
             self,
@@ -482,3 +487,18 @@ class IndependentScheduler(BaseScheduler):
             intervals.append(remaining_days)
 
         return intervals
+
+    def get_metadata(self) -> dict[str, Any]:
+        """
+        Get metadata for the scheduling strategy.
+        
+        Returns
+        -------
+        dict[str, Any]
+            Metadata about the scheduling strategy, including strategy
+            name and configuration.
+        """
+        return {
+            "strategy": "IndependentScheduler",
+            "contribution_interval": getattr(self, 'contrib_interval', None)
+        }

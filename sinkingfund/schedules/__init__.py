@@ -121,6 +121,7 @@ from __future__ import annotations
 
 # BUSINESS GOAL: Provide advanced cash flow scheduling algorithms
 # for optimized sinking fund management and payment coordination.
+from .base import ScheduleResult
 from .indep_scheduler import IndependentScheduler
 
 ########################################################################
@@ -130,5 +131,6 @@ from .indep_scheduler import IndependentScheduler
 # DESIGN CHOICE: Explicit public API ensures controlled exposure
 # of scheduling algorithms and clear module interface.
 __all__ = [
+    "ScheduleResult",
     "IndependentScheduler",
 ]

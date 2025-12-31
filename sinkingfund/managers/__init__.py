@@ -33,6 +33,8 @@ Key Components
   creation, validation, storage, and instance generation.
 - **EnvelopeManager**: Manages envelope operations including creation,
   contribution scheduling, and duplicate prevention.
+- **Reporter**: Generates comprehensive daily account reports with
+  balances, contributions, and payouts.
 - **ScheduleManager**: Controls cash flow scheduling and timeline
   generation for systematic fund management.
 
@@ -119,6 +121,7 @@ from __future__ import annotations
 from .allocation_manager import AllocationManager
 from .bill_manager import BillManager
 from .envelope_manager import EnvelopeManager
+from .reporter import Reporter
 from .schedule_manager import ScheduleManager
 
 ########################################################################
@@ -131,5 +134,6 @@ __all__ = [
     "AllocationManager",
     "BillManager",
     "EnvelopeManager",
+    "Reporter",
     "ScheduleManager",
 ]

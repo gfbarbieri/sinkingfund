@@ -278,6 +278,157 @@ class BillManager:
             bill for bill in self.bills if bill.bill_id != bill_id
         ]
     
+    def get_bill(self, bill_id: str) -> Bill | None:
+        """
+        Retrieve a specific bill by bill_id.
+
+        Performs lookup to find and return the bill with the specified
+        bill_id from the manager's collection.
+
+        Parameters
+        ----------
+        bill_id : str
+            Unique identifier of the bill to retrieve.
+
+        Returns
+        -------
+        Bill or None
+            The bill if found, None otherwise.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           # Get specific bill.
+           bill = manager.get_bill("electric")
+           if bill:
+               print(f"Found: {bill.service}")
+        """
+        
+        # PERFORMANCE: Generator expression with next() for efficient
+        # single-item lookup.
+        return next(
+            (bill for bill in self.bills if bill.bill_id == bill_id),
+            None
+        )
+    
+    def update_bill(
+        self, bill_id: str, updates: dict[str, Any]
+    ) -> None:
+        """
+        Update properties of an existing bill.
+
+        Modifies the specified bill by creating a new Bill object with
+        updated properties and replacing the old bill in the collection.
+        Maintains bill_id uniqueness and validates the updated bill.
+
+        Parameters
+        ----------
+        bill_id : str
+            Unique identifier of the bill to update. Must exist in the
+            current manager collection.
+        updates : dict[str, Any]
+            Dictionary of properties to update. Supported keys:
+            
+            - **service** : str, service description
+            - **amount_due** : Decimal or float, payment amount
+            - **recurring** : bool, recurrence flag
+            - **due_date** : date, for one-time bills
+            - **start_date** : date, for recurring bills
+            - **end_date** : date, recurrence end
+            - **frequency** : str, recurrence frequency
+            - **interval** : int, recurrence interval
+            - **occurrences** : int, occurrence limit
+            
+            Note: bill_id cannot be updated.
+
+        Raises
+        ------
+        ValueError
+            If no bill exists with the specified bill_id, or if updates
+            contain invalid values.
+
+        Notes
+        -----
+        The method creates a new Bill object with updated properties,
+        ensuring proper validation and standardization. The old bill is
+        replaced in the collection, maintaining insertion order.
+
+        Bill updates may affect bill instances, so envelopes associated
+        with the bill may need to be recreated after updating.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           # Update bill amount.
+           manager.update_bill(
+               "electric",
+               {"amount_due": 175.00}
+           )
+
+           # Update multiple properties.
+           manager.update_bill(
+               "rent",
+               {
+                   "amount_due": 1250.00,
+                   "frequency": "monthly",
+                   "interval": 1
+               }
+           )
+        """
+        
+        # BUSINESS GOAL: Validate bill existence before update to provide
+        # clear error feedback.
+        existing_bill = self.get_bill(bill_id)
+        if existing_bill is None:
+            raise ValueError(
+                f"Bill with ID '{bill_id}' does not exist. "
+                f"Cannot update non-existent bill."
+            )
+        
+        # BUSINESS GOAL: Prevent bill_id updates which would break
+        # references and associations.
+        if "bill_id" in updates:
+            raise ValueError(
+                "Cannot update bill_id. Use delete and add operations "
+                "to change bill_id."
+            )
+        
+        # DESIGN CHOICE: Build updated bill data by merging existing
+        # bill attributes with updates, then create new Bill object for
+        # proper validation and standardization.
+        # Note: Bill objects don't store due_date directly. For
+        # non-recurring bills, due_date equals start_date. For recurring
+        # bills, due_date is None.
+        bill_data = {
+            "bill_id": existing_bill.bill_id,
+            "service": existing_bill.service,
+            "amount_due": existing_bill.amount_due,
+            "recurring": existing_bill.recurring,
+            "due_date": existing_bill.start_date if not existing_bill.recurring else None,
+            "start_date": existing_bill.start_date,
+            "end_date": existing_bill.end_date,
+            "frequency": existing_bill.frequency,
+            "interval": existing_bill.interval,
+            "occurrences": existing_bill.occurrences
+        }
+        
+        # BUSINESS GOAL: Apply updates to bill data, preserving existing
+        # values for fields not specified in updates.
+        bill_data.update(updates)
+        
+        # DESIGN CHOICE: Create new Bill object to ensure proper
+        # validation and standardization of updated properties.
+        updated_bill = self.create_bills_from_data([bill_data])[0]
+        
+        # SIDE EFFECTS: Replace old bill with updated bill in collection,
+        # maintaining insertion order.
+        for i, bill in enumerate(self.bills):
+            if bill.bill_id == bill_id:
+                self.bills[i] = updated_bill
+                break
+    
     def create_bills(self, source: str | list[dict], **kwargs) -> list[Bill]:
         """
         Create bills from diverse data sources with unified processing.

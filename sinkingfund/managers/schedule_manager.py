@@ -75,6 +75,7 @@ from __future__ import annotations
 
 from ..models import Envelope, CashFlowSchedule
 from ..schedules import IndependentScheduler
+from ..schedules.base import ScheduleResult
 
 ########################################################################
 ## CONSTANTS
@@ -201,7 +202,7 @@ class ScheduleManager:
 
     def create_schedules(
         self, envelopes: list[Envelope], **kwargs
-    ) -> dict[Envelope, CashFlowSchedule]:
+    ) -> ScheduleResult:
         """
         Create contribution schedules for the provided envelopes using
         the configured scheduling strategy.
@@ -224,9 +225,12 @@ class ScheduleManager:
             
         Returns
         -------
-        dict[Envelope, CashFlowSchedule]
-            A dictionary mapping each envelope to its corresponding
-            schedule.
+        ScheduleResult
+            A result object containing the generated schedules and
+            metadata about the scheduling operation. The ``schedules``
+            attribute maps each envelope to its corresponding cash flow
+            schedule, and the ``metadata`` attribute contains
+            information about the scheduling strategy used.
             
         Raises
         ------

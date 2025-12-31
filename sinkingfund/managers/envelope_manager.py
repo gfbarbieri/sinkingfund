@@ -560,6 +560,43 @@ class EnvelopeManager:
 
         return cash_flows
 
+    def get_envelopes_for_bill(self, bill_id: str) -> list[Envelope]:
+        """
+        Find all envelopes associated with a specific bill_id.
+
+        Retrieves all envelopes in the manager's collection that are
+        associated with the specified bill_id. This is useful for
+        operations that need to find or manage all envelopes for a
+        particular bill.
+
+        Parameters
+        ----------
+        bill_id : str
+            Unique identifier of the bill to find envelopes for.
+
+        Returns
+        -------
+        list[Envelope]
+            All envelopes associated with the specified bill_id. Returns
+            empty list if no envelopes are found.
+
+        Examples
+        --------
+        .. code-block:: python
+
+           # Find all envelopes for a bill.
+           electric_envelopes = manager.get_envelopes_for_bill("electric")
+           for envelope in electric_envelopes:
+               print(f"Due: {envelope.bill_instance.due_date}")
+        """
+        
+        # BUSINESS GOAL: Filter envelopes by bill_id to support
+        # bill-based operations and state management.
+        return [
+            envelope for envelope in self.envelopes
+            if envelope.bill_instance.bill_id == bill_id
+        ]
+
     def _envelope_exists(
         self, bill_id: str, due_date: datetime.date
     ) -> bool:
