@@ -75,12 +75,20 @@ defaults using minimal code for maximum output.
 
 See :doc:`examples/quick_start_csv_to_report` for the full notebook.
 
-Manager Workflows
------------------
+Manager Workflows (Advanced)
+----------------------------
+
+.. note::
+   These notebooks demonstrate direct usage of manager classes, which are
+   **internal implementation details** of the SinkingFund API. Most users
+   should use the :class:`~sinkingfund.models.SinkingFund` class instead,
+   which provides a unified interface for all operations. These notebooks are
+   provided for advanced users who need to understand the internal
+   architecture or extend the system.
 
 These notebooks demonstrate how to use the manager classes to coordinate
-bill loading, envelope creation, and fund allocation. Essential for
-understanding the manager pattern and batch operations.
+bill loading, envelope creation, and fund allocation. These are advanced
+topics for understanding the internal architecture.
 
 .. toctree::
    :maxdepth: 1
@@ -89,6 +97,7 @@ understanding the manager pattern and batch operations.
    examples/billmanager_loading_and_managing
    examples/envelopemanager_coordinating_multiple_envelopes
    examples/allocationmanager_choosing_strategy
+   examples/schedulemanager_creating_schedules
 
 .. _example-billmanager-loading-and-managing:
 
@@ -122,6 +131,17 @@ Comparing sorted vs. proportional allocation, custom sort keys and
 weighting functions, and understanding allocation results and metadata.
 
 See :doc:`examples/allocationmanager_choosing_strategy` for the full
+notebook.
+
+.. _example-schedulemanager-creating-schedules:
+
+ScheduleManager: Creating Schedules
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Setting scheduling strategies, creating contribution schedules, and
+understanding the ScheduleResult structure and envelope integration.
+
+See :doc:`examples/schedulemanager_creating_schedules` for the full
 notebook.
 
 Real-World Use Cases
@@ -184,8 +204,8 @@ sinking fund system.
    :caption: Model Deep Dives:
 
    examples/working_with_bill_objects
-   examples/envelope_lifecycle_management
-   examples/cashflow_and_schedule_patterns
+   examples/working_with_envelope_objects
+   examples/working_with_cashflow_objects
 
 .. _example-working-with-bill-objects:
 
@@ -198,27 +218,27 @@ calculations including month-end adjustments and leap year handling.
 
 See :doc:`examples/working_with_bill_objects` for the full notebook.
 
-.. _example-envelope-lifecycle-management:
+.. _example-working-with-envelope-objects:
 
-Envelope Lifecycle Management
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Working with Envelope Objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Creating envelopes, setting contribution windows, tracking balances over
 time, checking funding status, and understanding the relationship between
 initial allocations and scheduled contributions.
 
-See :doc:`examples/envelope_lifecycle_management` for the full notebook.
+See :doc:`examples/working_with_envelope_objects` for the full notebook.
 
-.. _example-cashflow-and-schedule-patterns:
+.. _example-working-with-cashflow-objects:
 
-CashFlow and CashFlowSchedule Patterns
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Working with CashFlow Objects
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Creating individual cash flows, building schedules, querying by date
 ranges, and aggregating and analyzing cash flow patterns for both
 contributions and payments.
 
-See :doc:`examples/cashflow_and_schedule_patterns` for the full notebook.
+See :doc:`examples/working_with_cashflow_objects` for the full notebook.
 
 .. note::
    To add a new notebook, see the :ref:`creating-new-examples` section

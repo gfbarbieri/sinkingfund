@@ -39,93 +39,115 @@ envelope to reach the target amount by the due date.
 Basic Workflow
 --------------
 
-1. Define Your Bills
-~~~~~~~~~~~~~~~~~~~~
+The SinkingFund class provides a unified API for the complete workflow. Here's
+how to use it:
 
-Start by creating bills for your recurring expenses:
+1. Create Your Sinking Fund
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Start by creating a SinkingFund with your planning period and initial
+balance:
 
 .. code-block:: python
 
-   from sinkingfund import Bill
+   from sinkingfund import SinkingFund
    from datetime import date
    
-   # Quarterly insurance
-   insurance = Bill(
-       bill_id="auto_insurance",
-       service="Auto Insurance",
-       amount_due=450.00,
-       recurring=True,
-       start_date=date(2025, 3, 15),
-       frequency="quarterly"
-   )
-   
-   # Annual property tax
-   property_tax = Bill(
-       bill_id="property_tax",
-       service="Property Tax",
-       amount_due=2400.00,
-       recurring=True,
-       start_date=date(2025, 12, 1),
-       frequency="yearly"
+   # Create sinking fund for 2025 with $5,000 initial balance.
+   fund = SinkingFund(
+       start_date=date(2025, 1, 1),
+       end_date=date(2025, 12, 31),
+       balance=5000.00
    )
 
-2. Create Envelopes
-~~~~~~~~~~~~~~~~~~~
-
-Create savings envelopes for upcoming bill instances:
-
-.. code-block:: python
-
-   from sinkingfund import Envelope
-   from decimal import Decimal
-   
-   # Get the next insurance bill
-   next_insurance = insurance.next_instance()
-   
-   # Create envelope for it
-   insurance_envelope = Envelope(
-       bill_instance=next_insurance,
-       initial_allocation=Decimal("50.00"),
-       start_contrib_date=date(2025, 1, 1),
-       end_contrib_date=date(2025, 3, 14)
-   )
-
-3. Generate Contribution Schedules
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Create schedules to determine when and how much to save:
-
-.. code-block:: python
-
-   from sinkingfund.schedules import IndependentScheduler
-   
-   scheduler = IndependentScheduler()
-   
-   # Generate contribution schedule
-   scheduler.schedule([insurance_envelope])
-   
-   # Check the schedule
-   schedule = insurance_envelope.schedule
-   total_needed = schedule.total_amount_as_of_date(date(2025, 3, 14))
-   print(f"Total contributions needed: ${total_needed}")
-
-4. Track Progress
+2. Add Your Bills
 ~~~~~~~~~~~~~~~~~
 
-Monitor your envelope funding progress:
+Define and add your bills. The `add_bills()` method accepts a list of bills,
+a single bill dictionary, or a file path. Envelopes are automatically
+created for bill instances in the planning period:
 
 .. code-block:: python
 
-   # Check current status
-   remaining = insurance_envelope.remaining()
-   fully_funded = insurance_envelope.is_fully_funded()
+   # Option 1: Load multiple bills at once.
+   bills = [
+       {
+           "bill_id": "auto_insurance",
+           "service": "Auto Insurance",
+           "amount_due": 450.00,
+           "recurring": True,
+           "start_date": date(2025, 3, 15),
+           "frequency": "quarterly"
+       },
+       {
+           "bill_id": "property_tax",
+           "service": "Property Tax",
+           "amount_due": 2400.00,
+           "recurring": True,
+           "start_date": date(2025, 12, 1),
+           "frequency": "annual"
+       }
+   ]
+   fund.add_bills(bills)
    
-   print(f"Remaining to save: ${remaining}")
-   print(f"Fully funded: {fully_funded}")
+   # Option 2: Add a single bill (automatically creates envelopes).
+   fund.add_bills({
+       "bill_id": "electric",
+       "service": "Electric Bill",
+       "amount_due": 150.00,
+       "recurring": True,
+       "start_date": date(2025, 1, 1),
+       "frequency": "monthly"
+   })
    
-   # Get balance on a specific date
-   balance = insurance_envelope.get_balance_as_of_date(date(2025, 2, 15))
-   print(f"Balance on Feb 15: ${balance}")
+   # Option 3: Add from a CSV/Excel/JSON file.
+   # fund.add_bills("bills.csv")
+
+3. Generate Your Report
+~~~~~~~~~~~~~~~~~~~~~~~
+
+The easiest way is to use `quick_report()` which does everything in one
+call:
+
+.. code-block:: python
+
+   # Generate complete report with bi-weekly contributions.
+   report = fund.quick_report(contribution_interval=14, active_only=True)
+   
+   # The report shows daily account balances, contributions, and payouts.
+   for date, data in list(report.items())[:5]:
+       print(f"{date}: Balance=${data['account_balance']['total']}, "
+             f"Contributions=${data['contributions']['total']}")
+
+4. Manual Workflow (Optional)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For more control, you can perform each step manually:
+
+.. code-block:: python
+
+   # Note: Envelopes are automatically created by add_bills().
+   # If you need to manually create envelopes, get bill instances first.
+   instances = fund.get_bill_instances()
+   fund.create_envelopes(instances)
+   
+   # Allocate funds using sorted strategy.
+   fund.allocate(strategy="sorted", sort_key="cascade")
+   
+   # Set contribution dates (bi-weekly).
+   fund.update_contribution_dates(contribution_interval=14)
+   
+   # Create schedules.
+   fund.schedule(strategy="independent_scheduler")
+   
+   # Generate report.
+   report = fund.report(active_only=True)
+   
+   # Access envelopes for detailed tracking.
+   envelopes = fund.get_envelopes()
+   for envelope in envelopes:
+       print(f"{envelope.bill_instance.service}: "
+             f"${envelope.initial_allocation} allocated")
 
 Advanced Features
 -----------------
@@ -133,70 +155,94 @@ Advanced Features
 Loading Bills from Files
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Load bill definitions from CSV, Excel, or JSON files:
+The SinkingFund API supports loading bills directly from files:
 
 .. code-block:: python
 
-   from sinkingfund.utils import load_bill_data_from_file
+   from sinkingfund import SinkingFund
+   from datetime import date
    
-   # Load from CSV
-   bills_data = load_bill_data_from_file("bills.csv")
+   fund = SinkingFund(
+       start_date=date(2025, 1, 1),
+       end_date=date(2025, 12, 31),
+       balance=5000.00
+   )
    
-   # Convert to Bill objects
-   bills = [Bill(**bill_data) for bill_data in bills_data]
+   # Add from CSV, Excel, or JSON files.
+   fund.add_bills("bills.csv")
+   # or
+   fund.add_bills("bills.xlsx")
+   # or
+   fund.add_bills("bills.json")
 
 Allocation Strategies
 ~~~~~~~~~~~~~~~~~~~~~
 
-Use different strategies to allocate available funds across envelopes:
+Use different allocation strategies when allocating funds:
 
 .. code-block:: python
 
-   from sinkingfund.allocation import ProportionalAllocator
-   from sinkingfund.managers import AllocationManager
-   from decimal import Decimal
+   # Sorted allocation (priority-based, earliest due date first).
+   fund.allocate(strategy="sorted", sort_key="cascade")
    
-   # Create allocator
-   allocator = ProportionalAllocator()
-   manager = AllocationManager(allocator)
+   # Proportional allocation (distribute proportionally by amount).
+   fund.allocate(strategy="proportional", method="proportional")
    
-   # Allocate $500 across all envelopes
-   available_funds = Decimal("500.00")
-   result = manager.allocate(envelopes, available_funds)
-   
-   print(f"Allocated to {len(result.envelopes)} envelopes")
+   # Debt snowball (smallest amount first).
+   fund.allocate(strategy="sorted", sort_key="debt_snowball", reverse=False)
 
-Multiple Envelope Management
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Managing Bills and Envelopes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Manage collections of envelopes efficiently:
+You can add, update, and delete bills with automatic envelope management:
 
 .. code-block:: python
 
-   from sinkingfund.managers import EnvelopeManager, BillManager
+   # Add a new bill (automatically creates envelopes).
+   fund.add_bills({
+       "bill_id": "water",
+       "service": "Water Bill",
+       "amount_due": 75.00,
+       "recurring": True,
+       "start_date": date(2025, 2, 1),
+       "frequency": "monthly"
+   })
    
-   # Create managers
-   bill_manager = BillManager()
-   envelope_manager = EnvelopeManager()
+   # Update an existing bill (recreates envelopes).
+   fund.update_bill("electric", {"amount_due": 175.00})
    
-   # Add bills
-   bill_manager.add_bills([insurance, property_tax])
+   # Delete a bill and its envelopes.
+   fund.delete_bills(["old_bill"])
    
-   # Create envelopes for upcoming bills
-   upcoming_bills = bill_manager.get_upcoming_instances(
-       start_date=date(2025, 1, 1),
-       end_date=date(2025, 12, 31)
+   # Delete a bill but keep envelopes (if needed).
+   fund.delete_bills(["temp_bill"], remove_envelopes=False)
+
+Accessing Envelopes
+~~~~~~~~~~~~~~~~~~~
+
+You can access envelopes to track detailed progress:
+
+.. code-block:: python
+
+   # Get all envelopes.
+   envelopes = fund.get_envelopes()
+   
+   # Get a specific envelope.
+   envelope = fund.get_envelope(
+       bill_id="property_tax",
+       due_date=date(2025, 11, 1)
    )
    
-   # Convert to envelopes
-   for bill_instance in upcoming_bills:
-       envelope = Envelope(
-           bill_instance=bill_instance,
-           initial_allocation=Decimal("0.00"),
-           start_contrib_date=date(2025, 1, 1),
-           end_contrib_date=bill_instance.due_date
-       )
-       envelope_manager.add_envelope(envelope)
+   if envelope:
+       print(f"Allocated: ${envelope.initial_allocation}")
+       print(f"Remaining: ${envelope.remaining_amount}")
+       print(f"Fully funded: {envelope.is_fully_funded}")
+
+.. note::
+   For advanced use cases requiring direct access to managers, allocation
+   strategies, or schedulers, see the :doc:`api_reference`. These components
+   are internal implementation details and most users should interact with
+   them through the SinkingFund API.
 
 Best Practices
 --------------
@@ -207,6 +253,45 @@ Best Practices
 4. **Track Everything**: Use the cash flow schedules to monitor progress
 5. **Plan Ahead**: Create envelopes for bills 3-6 months in advance
 
+Updating Balance and Regenerating Reports
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+You can update your balance and regenerate reports with different options:
+
+.. code-block:: python
+
+   # Update balance after receiving funds.
+   fund.update_balance(6000.00)
+   
+   # Option 1: Regenerate report using quick_report with new settings.
+   report = fund.quick_report(
+       allocation_strategy="proportional",
+       contribution_interval=7,
+       active_only=True
+   )
+   
+   # Option 2: Manual workflow - allocate with new balance, then regenerate.
+   fund.allocate(strategy="sorted")
+   fund.update_contribution_dates(contribution_interval=7)
+   fund.schedule(strategy="independent_scheduler")
+   report = fund.report(active_only=True)
+
+State Management
+~~~~~~~~~~~~~~~~
+
+Keep your sinking fund state consistent:
+
+.. code-block:: python
+
+   # Validate state consistency.
+   is_valid, issues = fund.validate_state()
+   if not is_valid:
+       for issue in issues:
+           print(f"Issue: {issue}")
+   
+   # Sync envelopes with bills (removes orphaned envelopes).
+   fund.sync_envelopes_with_bills()
+
 Common Patterns
 ---------------
 
@@ -215,11 +300,26 @@ Monthly Budget Review
 
 .. code-block:: python
 
-   # Get all envelopes that need funding
-   underfunded = [env for env in envelopes if not env.is_fully_funded()]
+   from sinkingfund import SinkingFund
+   from datetime import date
    
-   # Calculate total shortfall
-   total_needed = sum(env.remaining() for env in underfunded)
+   fund = SinkingFund(
+       start_date=date(2025, 1, 1),
+       end_date=date(2025, 12, 31),
+       balance=5000.00
+   )
+   fund.add_bills("bills.csv")
+   fund.quick_report()
+   
+   # Get all envelopes that need funding.
+   envelopes = fund.get_envelopes()
+   underfunded = [
+       env for env in envelopes 
+       if not env.is_fully_funded
+   ]
+   
+   # Calculate total shortfall.
+   total_needed = sum(env.remaining_amount for env in underfunded)
    
    print(f"Need ${total_needed} across {len(underfunded)} envelopes")
 
@@ -228,15 +328,28 @@ Quarterly Planning
 
 .. code-block:: python
 
-   # Get all bills due in next quarter
-   quarter_end = date(2025, 6, 30)
-   upcoming = bill_manager.get_bills_due_by(quarter_end)
+   # Generate report for the quarter.
+   report = fund.report(active_only=True)
    
-   # Create planning report
-   for bill in upcoming:
-       envelope = envelope_manager.get_envelope_for_bill(bill.bill_id)
-       if envelope:
-           print(f"{bill.service}: ${envelope.remaining()} remaining")
+   # Filter for dates in the quarter.
+   quarter_end = date(2025, 6, 30)
+   quarter_dates = [
+       d for d in report.keys() 
+       if d <= quarter_end
+   ]
+   
+   # Analyze quarterly contributions and payouts.
+   quarter_contribs = sum(
+       report[d]['contributions']['total'] 
+       for d in quarter_dates
+   )
+   quarter_payouts = sum(
+       report[d]['payouts']['total'] 
+       for d in quarter_dates
+   )
+   
+   print(f"Q2 Contributions: ${quarter_contribs}")
+   print(f"Q2 Payouts: ${quarter_payouts}")
 
 This guide provides the foundation for effective sinking fund management.
 For detailed API documentation, see the :doc:`api_reference`.

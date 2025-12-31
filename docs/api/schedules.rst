@@ -12,6 +12,11 @@ Abstract base class defining the scheduler interface.
 .. automodule:: sinkingfund.schedules.base
    :members:
    :show-inheritance:
+   :exclude-members: ScheduleResult
+
+.. autoclass:: sinkingfund.schedules.base.ScheduleResult
+   :no-index:
+   :exclude-members: schedules, metadata
 
 Independent Scheduler
 ---------------------

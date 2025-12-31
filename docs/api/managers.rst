@@ -1,8 +1,17 @@
 Managers Package
 ================
 
+.. note::
+   Manager classes are **internal implementation details** of the
+   :class:`~sinkingfund.models.SinkingFund` class. Most users should interact
+   with the system through the SinkingFund API, which provides a unified
+   interface for all operations. These classes are documented here for
+   advanced users who need to understand the internal architecture or extend
+   the system.
+
 Manager classes provide high-level orchestration and coordination between
-different components of the sinking fund system.
+different components of the sinking fund system. The SinkingFund class uses
+these managers internally to coordinate operations.
 
 Allocation Manager
 ------------------

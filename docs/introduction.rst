@@ -271,8 +271,8 @@ orchestrator that coordinates all components:
   with a single method call.
 
 - **Workflow Automation**: Automates the complete planning process:
-  loading bills, creating envelopes, allocating funds, and generating
-  schedules.
+  adding bills (with automatic envelope creation), allocating funds, and
+  generating schedules.
 
 Most users will primarily interact with the SinkingFund class, using
 managers and strategies for advanced customization. See the

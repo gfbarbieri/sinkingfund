@@ -245,11 +245,22 @@ Managers
 
 .. _managers-section:
 
+.. note::
+   Manager classes are **internal implementation details** of the SinkingFund
+   class. Most users should interact with the system through the
+   :class:`~sinkingfund.models.SinkingFund` API, which provides a unified
+   interface for all operations. The managers are documented here for advanced
+   users who need to understand the internal architecture or extend the
+   system.
+
 Manager classes provide high-level orchestration and coordination between
-different components of the sinking fund system. They implement the
-manager pattern to encapsulate business logic, validation, and workflow
-coordination while maintaining clean separation of concerns from core
-domain models.
+different components of the sinking fund system. They implement the manager
+pattern to encapsulate business logic, validation, and workflow coordination
+while maintaining clean separation of concerns from core domain models.
+
+The SinkingFund class uses these managers internally to coordinate operations.
+Direct use of managers is only recommended for advanced use cases or system
+extensions.
 
 Allocation Manager
 ~~~~~~~~~~~~~~~~~~
@@ -269,22 +280,9 @@ algorithms and providing a unified interface for fund distribution.
 - **Result Management**: Returns allocation results with metadata about
   the allocation process.
 
-**Example:**
-
-.. code-block:: python
-
-   from decimal import Decimal
-   from sinkingfund.managers import AllocationManager
-
-   # Create manager with sorted strategy.
-   manager = AllocationManager(strategy="sorted")
-   
-   # Allocate funds.
-   result = manager.allocate(
-       envelopes=envelope_list,
-       balance=Decimal("1000.00"),
-       curr_date=date.today()
-   )
+**Note:** The SinkingFund class uses AllocationManager internally. Most
+users should use the :meth:`~sinkingfund.models.SinkingFund.allocate` method
+instead of creating AllocationManager directly.
 
 For detailed information, see
 :class:`~sinkingfund.managers.AllocationManager`.
@@ -311,24 +309,10 @@ time ranges.
 - **Validation**: Enforces business rules for bill uniqueness and data
   integrity.
 
-**Example:**
-
-.. code-block:: python
-
-   from sinkingfund.managers import BillManager
-   from datetime import date
-
-   manager = BillManager()
-   
-   # Load bills from file.
-   bills = manager.create_bills("bills.csv")
-   manager.add_bills(bills)
-   
-   # Generate instances for planning period.
-   instances = manager.active_instances_in_range(
-       start_reference=date(2025, 1, 1),
-       end_reference=date(2025, 12, 31)
-   )
+**Note:** The SinkingFund class uses BillManager internally. Most users
+should use the :meth:`~sinkingfund.models.SinkingFund.add_bills` and
+:meth:`~sinkingfund.models.SinkingFund.get_bill_instances` methods instead
+of creating BillManager directly.
 
 For detailed information, see
 :class:`~sinkingfund.managers.BillManager`.
@@ -353,24 +337,10 @@ collections, contribution scheduling, and balance tracking operations.
 - **Duplicate Prevention**: Validates envelope uniqueness and prevents
   conflicting commitments.
 
-**Example:**
-
-.. code-block:: python
-
-   from sinkingfund.managers import EnvelopeManager
-   from datetime import date
-
-   manager = EnvelopeManager()
-   
-   # Create envelopes from bill instances.
-   envelopes = manager.create_envelopes(bill_instances)
-   manager.add_envelopes(envelopes)
-   
-   # Set contribution dates (bi-weekly).
-   manager.set_contrib_dates(
-       start_contrib_date=date(2025, 1, 1),
-       contrib_interval=14
-   )
+**Note:** The SinkingFund class uses EnvelopeManager internally. Most users
+should use the :meth:`~sinkingfund.models.SinkingFund.create_envelopes` and
+:meth:`~sinkingfund.models.SinkingFund.get_envelopes` methods instead of
+creating EnvelopeManager directly.
 
 For detailed information, see
 :class:`~sinkingfund.managers.EnvelopeManager`.
@@ -393,16 +363,9 @@ envelopes using various scheduling algorithms.
 - **Envelope Integration**: Ensures generated schedules are properly
   applied to corresponding envelopes.
 
-**Example:**
-
-.. code-block:: python
-
-   from sinkingfund.managers import ScheduleManager
-
-   manager = ScheduleManager(strategy="independent_scheduler")
-   
-   # Create schedules for all envelopes.
-   schedules = manager.create_schedules(envelopes=envelope_list)
+**Note:** The SinkingFund class uses ScheduleManager internally. Most users
+should use the :meth:`~sinkingfund.models.SinkingFund.schedule` method
+instead of creating ScheduleManager directly.
 
 For detailed information, see
 :class:`~sinkingfund.managers.ScheduleManager`.
@@ -436,17 +399,10 @@ considering interactions between bills.
 - **Predictable Payments**: Creates regular, consistent payments for
   each bill with smooth contribution amounts.
 
-**Example:**
-
-.. code-block:: python
-
-   from sinkingfund.schedules import IndependentScheduler
-
-   scheduler = IndependentScheduler()
-   
-   # Generate schedules for envelopes.
-   schedule_dict = {}
-   scheduler.schedule(envelopes=envelope_list, schedule_dict=schedule_dict)
+**Note:** The SinkingFund class uses schedulers internally through the
+ScheduleManager. Most users should use the
+:meth:`~sinkingfund.models.SinkingFund.schedule` method instead of creating
+schedulers directly.
 
 For detailed information, see
 :class:`~sinkingfund.schedules.IndependentScheduler`.
@@ -481,19 +437,42 @@ to cash flow projection.
 1. **Initialize**: Create a SinkingFund with planning period and initial
    balance.
 
-2. **Load Bills**: Add bills from files or programmatic definitions.
+2. **Add Bills**: Add bills from files or programmatic definitions using
+   ``add_bills()``. This method accepts a file path (str), a single bill
+   dictionary, or a list of bill dictionaries. Envelopes are automatically
+   created for bill instances in the planning period.
 
-3. **Create Envelopes**: Generate envelopes for bill instances in the
-   planning period.
+3. **Allocate Funds**: Distribute available funds across envelopes using
+   selected allocation strategy with ``allocate()``.
 
-4. **Allocate Funds**: Distribute available funds across envelopes using
-   selected allocation strategy.
+4. **Schedule Contributions**: Set contribution dates and generate
+   contribution schedules for each envelope with ``update_contribution_dates()``
+   and ``schedule()``.
 
-5. **Schedule Contributions**: Generate contribution schedules for each
-   envelope.
+5. **Generate Reports**: Create daily account reports showing balances,
+   contributions, and payouts with ``report()`` or ``quick_report()``. The
+   ``quick_report()`` method performs steps 3-5 automatically.
 
-6. **Generate Reports**: Create daily account reports showing balances,
-   contributions, and payouts.
+**State Management:**
+
+The SinkingFund API provides methods to maintain consistency:
+
+- **Update Bills**: Use ``update_bill()`` to modify bill properties and
+  automatically sync envelopes.
+
+- **Delete Bills**: Use ``delete_bills()`` with automatic envelope cleanup.
+
+- **Update Balance**: Use ``update_balance()`` to adjust account balance
+  and sync the Reporter. After updating balance, call ``allocate()`` again
+  or use ``quick_report()`` to regenerate the complete report.
+
+- **Regenerate Reports**: Use ``quick_report()`` again with different
+  options, or use the manual workflow (``allocate()`` → ``update_contribution_dates()``
+  → ``schedule()`` → ``report()``) to regenerate reports with different
+  allocation or scheduling options.
+
+- **State Validation**: Use ``validate_state()`` to check consistency and
+  ``sync_envelopes_with_bills()`` to fix orphaned envelopes.
 
 **Example:**
 
@@ -513,8 +492,8 @@ to cash flow projection.
    # Complete workflow in one call.
    report = fund.quick_report(
        contribution_interval=14,
-       allocation_config={"strategy": "sorted"},
-       scheduler_config={"strategy": "independent_scheduler"}
+       allocation_strategy="sorted",
+       scheduler_strategy="independent_scheduler"
    )
 
 For detailed information, see :class:`~sinkingfund.models.SinkingFund`.

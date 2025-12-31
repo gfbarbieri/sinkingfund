@@ -169,14 +169,14 @@ Example CSV content:
        balance=5000.00
    )
 
-   # Load bills from CSV.
-   fund.create_bills("data/bills.csv")
+   # Add bills from CSV.
+   fund.add_bills("data/bills.csv")
 
-   # Or load from Excel.
-   fund.create_bills("data/bills.xlsx")
+   # Or add from Excel.
+   fund.add_bills("data/bills.xlsx")
 
-   # Or load from JSON.
-   fund.create_bills("data/bills.json")
+   # Or add from JSON.
+   fund.add_bills("data/bills.json")
 
 For more details on file formats and data loading, see the
 :doc:`api/utils` section in the API reference.
@@ -189,10 +189,8 @@ of the Sinking Fund library. This example will:
 
 1. Create a sinking fund for annual planning
 2. Define bills for property tax and car insurance
-3. Generate envelopes automatically
-4. Allocate available funds
-5. Create contribution schedules
-6. Generate a daily account report
+3. Add bills (envelopes are automatically created)
+4. Generate a complete report with allocation and scheduling
 
 Complete Workflow Example
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -232,12 +230,11 @@ Complete Workflow Example
        }
    ]
 
-   # Step 3: Add bills to the fund.
-   fund.create_bills(bills)
+   # Step 3: Add bills to the fund (automatically creates envelopes).
+   fund.add_bills(bills)
 
    # Step 4: Generate a quick report with default settings.
    # This automatically:
-   # - Creates envelopes for all bills in the planning period.
    # - Allocates available funds using sorted strategy.
    # - Sets contribution intervals to 14 days (bi-weekly).
    # - Creates contribution schedules.
@@ -273,8 +270,8 @@ For more control, you can perform each step manually:
        balance=Decimal("5000.00")
    )
 
-   # Add bills.
-   fund.create_bills([
+   # Add bills (automatically creates envelopes for bill instances).
+   fund.add_bills([
        {
            "bill_id": "prop_tax",
            "service": "Property Tax",
@@ -285,29 +282,22 @@ For more control, you can perform each step manually:
        }
    ])
 
-   # Get bill instances for the planning period.
-   instances = fund.get_bills_in_range()
-
-   # Create envelopes for the bill instances.
+   # Note: Envelopes are automatically created by add_bills().
+   # If you need to manually create envelopes, get bill instances first.
+   instances = fund.get_bill_instances()
    fund.create_envelopes(instances)
 
-   # Set allocation strategy (priority-based by due date).
-   fund.set_allocation_strategy("sorted", sort_key="cascade")
-
-   # Allocate available balance to envelopes.
-   fund.allocate_balance()
+   # Allocate funds using sorted strategy (priority-based by due date).
+   fund.allocate(strategy="sorted", sort_key="cascade")
 
    # Set contribution dates (bi-weekly contributions).
    fund.update_contribution_dates(contribution_interval=14)
 
-   # Set scheduler strategy.
-   fund.set_scheduler("independent_scheduler")
-
    # Create contribution schedules.
-   fund.create_schedules()
+   fund.schedule(strategy="independent_scheduler")
 
    # Generate daily account report.
-   report = fund.build_daily_account_report(active_only=True)
+   report = fund.report(active_only=True)
 
 Next Steps
 ----------
