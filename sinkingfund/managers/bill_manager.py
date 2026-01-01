@@ -808,6 +808,22 @@ class BillManager:
             for record in data
         ]
 
+        # BUSINESS GOAL: Normalize non-recurring bill dates for consistency.
+        # For non-recurring bills, ensure due_date is copied to start_date
+        # and end_date if they are missing. This ensures data dictionaries
+        # are fully normalized before Bill construction, even though the Bill
+        # constructor also handles this internally.
+        for record in normalized_data:
+            if record.get('recurring') is False:
+                due_date = record.get('due_date')
+                if due_date is not None:
+                    # Set start_date from due_date if missing.
+                    if record.get('start_date') is None:
+                        record['start_date'] = due_date
+                    # Set end_date from due_date if missing.
+                    if record.get('end_date') is None:
+                        record['end_date'] = due_date
+
         # BUSINESS GOAL: Convert structured data into validated Bill
         # objects for systematic management. Use Bill constructor for
         # validation and consistent object creation across all data

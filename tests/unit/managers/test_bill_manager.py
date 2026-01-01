@@ -262,6 +262,39 @@ class TestBillManagerCreateBills:
         with pytest.raises(KeyError, match="bill_id"):
             manager.create_bills_from_data(invalid_record)
 
+    def test_create_bills_from_data_normalizes_nonrecurring_dates(self) -> None:
+        """
+        Test that create_bills_from_data normalizes non-recurring bill
+        dates (due_date → start_date and end_date).
+        """
+        
+        manager = BillManager()
+        
+        # Test: Create data with non-recurring bill that has only due_date
+        # (no start_date or end_date). This simulates data from CSV files.
+        data = [
+            {
+                "bill_id": "registration",
+                "service": "Car Registration",
+                "amount_due": 125.00,
+                "recurring": False,
+                "due_date": datetime.date(2024, 3, 15),
+                # No start_date or end_date.
+            }
+        ]
+        
+        # Test: Create bills from data.
+        bills = manager.create_bills_from_data(data)
+        
+        # Test: Verify bill was created correctly.
+        assert len(bills) == 1
+        bill = bills[0]
+        assert bill.bill_id == "registration"
+        assert bill.recurring is False
+        assert bill.start_date == datetime.date(2024, 3, 15)
+        assert bill.end_date == datetime.date(2024, 3, 15)
+        assert bill.occurrences == 1
+
 
 ########################################################################
 ## INSTANCE GENERATION
