@@ -99,6 +99,8 @@ import pandas as pd
 
 from typing import Any, List, Optional, Union
 
+from .date_utils import parse_date, normalize_date_fields
+
 ########################################################################
 ## TYPE DEFINITIONS
 ########################################################################
@@ -137,6 +139,7 @@ def _coerce_scalar(value: Any) -> Any:
     This function handles the following conversions:
     - pd.Timestamp/datetime -> datetime.date
     - pd.NaT/pd.NA/np.nan -> None
+    - String dates -> datetime.date (via parse_date)
     - All other types -> unchanged
     """
     # BUSINESS GOAL: Convert all missing value representations to None
@@ -148,6 +151,16 @@ def _coerce_scalar(value: Any) -> Any:
     # applications where time components are typically not relevant.
     if isinstance(value, (pd.Timestamp, datetime.datetime)):
         return value.date()
+    
+    # BUSINESS GOAL: Convert date strings to date objects using centralized
+    # date parsing. This ensures consistent date handling across all file
+    # formats and input sources.
+    if isinstance(value, str):
+        parsed = parse_date(value)
+        if parsed is not None:
+            return parsed
+        # If parse_date returns None, it means the string wasn't a date,
+        # so return the original string unchanged.
 
     # Leave all other scalar types unchanged.
     return value
@@ -303,6 +316,9 @@ def read_csv_to_dict(file_path: PathLike) -> list[dict]:
     """
 
     # Load the bills from the CSV file.
+    # DESIGN CHOICE: Let pandas try to infer date formats first, then
+    # use explicit parsing for any remaining string dates. This provides
+    # flexibility for various date formats while maintaining performance.
     bills_df = pd.read_csv(
         file_path,
         usecols=[
@@ -310,7 +326,6 @@ def read_csv_to_dict(file_path: PathLike) -> list[dict]:
             'start_date', 'end_date', 'frequency', 'interval', 'occurrences'
         ],
         parse_dates=['due_date', 'start_date', 'end_date'],
-        date_format='%m/%d/%Y',
         dtype={
             'bill_id': 'str', 
             'service': 'str', 
@@ -322,13 +337,30 @@ def read_csv_to_dict(file_path: PathLike) -> list[dict]:
         }
     )
     
-    # Coerce the dataframe.
+    # BUSINESS GOAL: Ensure all date columns are properly parsed. If pandas
+    # couldn't parse some dates (e.g., non-standard formats), try explicit
+    # parsing as a fallback.
+    bills_df = _parse_date_columns(
+        bills_df,
+        ['due_date', 'start_date', 'end_date']
+    )
+    
+    # Coerce the dataframe to convert Timestamps to date objects and
+    # handle missing values.
     bills_df = _coerce_dataframe(bills_df)
 
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
     
-    return to_dict
+    # BUSINESS GOAL: Apply final normalization pass to ensure all date
+    # fields are datetime.date objects. This provides a safety net for
+    # any date strings that weren't converted by pandas or coercion.
+    normalized_records = [
+        normalize_date_fields(record, ['due_date', 'start_date', 'end_date'])
+        for record in to_dict
+    ]
+    
+    return normalized_records
 
 def read_excel_to_dict(
     file_path: PathLike, sheet_name: Optional[str] = None
@@ -389,13 +421,30 @@ def read_excel_to_dict(
         }
     )
 
-    # Coerce the dataframe.
+    # BUSINESS GOAL: Parse date columns first to convert string dates to
+    # Timestamps, then coerce to date objects. This ensures consistent
+    # date handling regardless of how Excel stores the dates.
+    bills_df = _parse_date_columns(
+        bills_df,
+        ['due_date', 'start_date', 'end_date']
+    )
+
+    # Coerce the dataframe to convert Timestamps to date objects and
+    # handle missing values.
     bills_df = _coerce_dataframe(bills_df)
 
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
     
-    return to_dict
+    # BUSINESS GOAL: Apply final normalization pass to ensure all date
+    # fields are datetime.date objects. This provides a safety net for
+    # any date strings that weren't converted by pandas or coercion.
+    normalized_records = [
+        normalize_date_fields(record, ['due_date', 'start_date', 'end_date'])
+        for record in to_dict
+    ]
+    
+    return normalized_records
 
 def read_json_to_dict(file_path: PathLike) -> list[dict]:
     """
@@ -440,13 +489,30 @@ def read_json_to_dict(file_path: PathLike) -> list[dict]:
         }
     )
 
-    # Coerce the dataframe.
-    # bills_df = _coerce_dataframe(bills_df)
+    # BUSINESS GOAL: Parse date columns first to convert string dates to
+    # Timestamps, then coerce to date objects. This ensures consistent
+    # date handling regardless of how pandas interprets the JSON data.
+    bills_df = _parse_date_columns(
+        bills_df, 
+        ['due_date', 'start_date', 'end_date']
+    )
+
+    # Coerce the dataframe to convert Timestamps to date objects and
+    # handle missing values.
+    bills_df = _coerce_dataframe(bills_df)
 
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
     
-    return to_dict
+    # BUSINESS GOAL: Apply final normalization pass to ensure all date
+    # fields are datetime.date objects. This provides a safety net for
+    # any date strings that weren't converted by pandas or coercion.
+    normalized_records = [
+        normalize_date_fields(record, ['due_date', 'start_date', 'end_date'])
+        for record in to_dict
+    ]
+    
+    return normalized_records
 
 def _coerce_scalar(value: Any) -> Any:
     """

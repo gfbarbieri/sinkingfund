@@ -4,6 +4,8 @@ Date Utilities
 
 Robust date arithmetic functions for financial calculations with proper
 handling of calendar complexities, month-end edge cases, and leap years.
+Also provides centralized date parsing and conversion utilities for
+consistent date handling across all data input sources.
 
 Core Abstractions
 -----------------
@@ -24,6 +26,11 @@ billing patterns like bi-weekly (interval=2, frequency='weekly') or
 quarterly (interval=1, frequency='quarterly') without requiring separate
 functions for each pattern.
 
+**Date Parsing and Conversion**: The `parse_date` function provides a
+centralized way to convert date strings, Timestamps, and other date-like
+objects into `datetime.date` objects. This ensures consistent date
+handling across file readers (CSV, Excel, JSON) and programmatic input.
+
 Key Features
 ------------
 
@@ -37,6 +44,8 @@ Key Features
   intervals for efficient sequence generation.
 * **Predictable Behavior**: Deterministic results for edge cases
   ensure consistent financial calculations.
+* **Flexible Date Input**: Supports multiple date string formats for
+  user convenience and data source compatibility.
 
 Examples
 --------
@@ -96,7 +105,7 @@ import calendar
 import datetime
 
 from enum import Enum
-from typing import Union
+from typing import Any, Optional, Union
 
 ########################################################################
 ## FREQUENCY ENUM
@@ -367,3 +376,250 @@ def get_date_range(start_date: datetime.date, end_date: datetime.date) -> list[d
     dates = [start_date + datetime.timedelta(days=i) for i in range(num_days)]
 
     return dates
+
+########################################################################
+## DATE PARSING AND CONVERSION
+########################################################################
+
+# Supported date string formats for parsing. Formats are tried in order
+# until a successful parse is found.
+SUPPORTED_DATE_FORMATS = [
+    '%m/%d/%Y',      # 01/15/2025 (US format)
+    '%Y-%m-%d',      # 2025-01-15 (ISO format)
+    '%m-%d-%Y',      # 01-15-2025 (US with dashes)
+    '%d/%m/%Y',      # 15/01/2025 (European format)
+    '%d-%m-%Y',      # 15-01-2025 (European with dashes)
+    '%Y/%m/%d',      # 2025/01/15 (ISO with slashes)
+]
+
+def parse_date(value: Any) -> Optional[datetime.date]:
+    """
+    Convert various date representations to a datetime.date object.
+    
+    This function provides a centralized entry point for date conversion
+    throughout the system. It handles strings, date objects, datetime
+    objects, pandas Timestamps, and None values, ensuring consistent date
+    handling across all data input sources.
+    
+    Parameters
+    ----------
+    value : Any
+        The value to convert to a date. Can be:
+        
+        - **str**: Date string in one of the supported formats (see
+          SUPPORTED_DATE_FORMATS)
+        - **datetime.date**: Already a date object, returned as-is
+        - **datetime.datetime**: Datetime object, converted to date
+        - **pd.Timestamp**: Pandas Timestamp, converted to date
+        - **None**: Returns None
+    
+    Returns
+    -------
+    datetime.date or None
+        The converted date object, or None if value is None or cannot be
+        parsed.
+    
+    Notes
+    -----
+    DESIGN CHOICE: This function serves as the single source of truth for
+    date conversion, ensuring consistent behavior across file readers,
+    BillManager, and other components that need to handle dates from
+    various sources.
+    
+    BUSINESS GOAL: Support multiple date string formats to accommodate
+    different user preferences and data source conventions (US vs
+    European formats, ISO standard, etc.).
+    
+    The function tries all supported formats in order until one succeeds.
+    If no format matches, returns None rather than raising an exception,
+    allowing graceful handling of invalid or missing dates.
+    
+    Examples
+    --------
+    Parse date strings in various formats:
+    
+    .. code-block:: python
+    
+       from sinkingfund.utils import parse_date
+       
+       # US format
+       date1 = parse_date("01/15/2025")
+       # Returns date(2025, 1, 15)
+       
+       # ISO format
+       date2 = parse_date("2025-01-15")
+       # Returns date(2025, 1, 15)
+       
+       # European format
+       date3 = parse_date("15/01/2025")
+       # Returns date(2025, 1, 15)
+    
+    Handle already-converted dates:
+    
+    .. code-block:: python
+    
+       from datetime import date, datetime
+       
+       # Already a date object
+       date4 = parse_date(date(2025, 1, 15))
+       # Returns date(2025, 1, 15) unchanged
+       
+       # Datetime object
+       date5 = parse_date(datetime(2025, 1, 15, 10, 30))
+       # Returns date(2025, 1, 15)
+    
+    Handle None and invalid values:
+    
+    .. code-block:: python
+    
+       # None returns None
+       date6 = parse_date(None)
+       # Returns None
+       
+       # Invalid string returns None
+       date7 = parse_date("not a date")
+       # Returns None
+    """
+    
+    # BUSINESS GOAL: Handle None values gracefully without raising
+    # exceptions.
+    if value is None:
+        return None
+    
+    # EDGE CASE: Convert datetime objects to date by extracting the
+    # date component. Must check datetime before date because datetime
+    # is a subclass of date.
+    if isinstance(value, datetime.datetime):
+        return value.date()
+    
+    # EDGE CASE: If already a date object, return as-is for efficiency
+    # and to avoid unnecessary conversions.
+    if isinstance(value, datetime.date):
+        return value
+    
+    # EDGE CASE: Handle pandas Timestamps if pandas is available.
+    # Check for Timestamp type without importing pandas to avoid
+    # dependency issues.
+    try:
+        import pandas as pd
+        if isinstance(value, pd.Timestamp):
+            return value.date()
+    except ImportError:
+        # Pandas not available, continue with string parsing.
+        pass
+    
+    # BUSINESS GOAL: Convert date strings to date objects using
+    # supported formats. Try each format until one succeeds.
+    if isinstance(value, str):
+        value = value.strip()
+        
+        # Try each supported format in order.
+        for date_format in SUPPORTED_DATE_FORMATS:
+            try:
+                parsed_date = datetime.datetime.strptime(value, date_format)
+                return parsed_date.date()
+            except ValueError:
+                # This format didn't match, try next one.
+                continue
+        
+        # DESIGN CHOICE: Return None for unparseable strings rather than
+        # raising an exception. This allows graceful handling of invalid
+        # dates in data files.
+        return None
+    
+    # DESIGN CHOICE: Return None for unrecognized types rather than
+    # raising an exception. This provides flexibility for future types
+    # and graceful degradation.
+    return None
+
+def normalize_date_fields(
+    record: dict[str, Any], date_fields: list[str]
+) -> dict[str, Any]:
+    """
+    Convert date fields in a dictionary record to datetime.date objects.
+    
+    This function normalizes date fields in dictionary records, ensuring
+    all specified date fields are converted to datetime.date objects
+    regardless of their input format (strings, Timestamps, etc.).
+    
+    Parameters
+    ----------
+    record : dict[str, Any]
+        Dictionary record containing fields that may need date conversion.
+    date_fields : list[str]
+        List of field names in the record that should be converted to
+        date objects.
+    
+    Returns
+    -------
+    dict[str, Any]
+        Dictionary with date fields converted to datetime.date objects.
+        Original dictionary is not modified; a new dictionary is returned.
+    
+    Notes
+    -----
+    DESIGN CHOICE: This function creates a new dictionary rather than
+    modifying the input, ensuring immutability and preventing side effects.
+    
+    BUSINESS GOAL: Provide a convenient way to normalize date fields in
+    records from file readers or user input, ensuring consistent date
+    handling before passing data to domain models.
+    
+    The function uses `parse_date` internally, so it supports all the
+    same input formats and gracefully handles None values and invalid
+    dates.
+    
+    Examples
+    --------
+    Normalize date fields in a bill record:
+    
+    .. code-block:: python
+    
+       from sinkingfund.utils import normalize_date_fields
+       
+       record = {
+           'bill_id': 'rent',
+           'service': 'Monthly Rent',
+           'amount_due': 1200.00,
+           'recurring': False,
+           'due_date': '01/15/2025',  # String date
+           'start_date': None
+       }
+       
+       normalized = normalize_date_fields(
+           record, ['due_date', 'start_date', 'end_date']
+       )
+       
+       # normalized['due_date'] is now date(2025, 1, 15)
+       # normalized['start_date'] is None
+    
+    Handle records with missing date fields:
+    
+    .. code-block:: python
+    
+       record = {
+           'bill_id': 'electric',
+           'service': 'Electric Bill',
+           'amount_due': 150.00,
+           'recurring': True,
+           'start_date': '2025-01-01'  # ISO format
+       }
+       
+       normalized = normalize_date_fields(
+           record, ['due_date', 'start_date']
+       )
+       
+       # normalized['start_date'] is date(2025, 1, 1)
+       # normalized['due_date'] is None (field didn't exist)
+    """
+    
+    # DESIGN CHOICE: Create new dictionary to ensure immutability.
+    normalized = record.copy()
+    
+    # BUSINESS GOAL: Convert each specified date field using the
+    # centralized parse_date function.
+    for field in date_fields:
+        if field in normalized:
+            normalized[field] = parse_date(normalized[field])
+    
+    return normalized

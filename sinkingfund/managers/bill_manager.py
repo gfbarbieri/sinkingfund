@@ -797,6 +797,17 @@ class BillManager:
         if not data:
             return []
 
+        # BUSINESS GOAL: Normalize date fields before creating Bill objects.
+        # This provides a final safety net to ensure all date fields are
+        # datetime.date objects, regardless of how the data was loaded
+        # (file readers, programmatic input, etc.).
+        from ..utils.date_utils import normalize_date_fields
+        
+        normalized_data = [
+            normalize_date_fields(record, ['due_date', 'start_date', 'end_date'])
+            for record in data
+        ]
+
         # BUSINESS GOAL: Convert structured data into validated Bill
         # objects for systematic management. Use Bill constructor for
         # validation and consistent object creation across all data
@@ -814,7 +825,7 @@ class BillManager:
                 interval=record.get('interval'),
                 occurrences=record.get('occurrences')
             )
-            for record in data
+            for record in normalized_data
         ]
         
         return bills

@@ -39,7 +39,8 @@ The utils package consists of several specialized modules:
 * **loaders**: Format-agnostic conversion from standardized dictionaries
   to domain model objects (Bill instances).
 * **date_utils**: Calendar-aware date arithmetic with proper handling
-  of month-end transitions and leap years.
+  of month-end transitions and leap years, plus centralized date parsing
+  and conversion utilities.
 
 Data Flow
 ---------
@@ -110,7 +111,14 @@ Date arithmetic utilities:
 from __future__ import annotations
 
 # Core date utilities.
-from .date_utils import increment_date, increment_monthly, Frequency
+from .date_utils import (
+    increment_date, 
+    increment_monthly, 
+    Frequency,
+    parse_date,
+    normalize_date_fields,
+    SUPPORTED_DATE_FORMATS
+)
 
 # File format detection and handling.
 from .file_utils import detect_file_format
@@ -148,6 +156,9 @@ __all__ = [
     'increment_date',
     'increment_monthly', 
     'Frequency',
+    'parse_date',
+    'normalize_date_fields',
+    'SUPPORTED_DATE_FORMATS',
     
     # File utilities.
     'detect_file_format',
