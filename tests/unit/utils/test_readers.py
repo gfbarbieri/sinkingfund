@@ -251,13 +251,12 @@ class TestReadCsvToDict:
                 'start_date', 'end_date', 'frequency', 'interval', 'occurrences'
             ],
             parse_dates=['due_date', 'start_date', 'end_date'],
-            date_format='%m/%d/%Y',
             dtype={
-                'bill_id': 'str', 
-                'service': 'str', 
+                'bill_id': 'str',
+                'service': 'str',
                 'amount_due': 'float',
-                'recurring': 'bool', 
-                'interval': 'Int64', 
+                'recurring': 'bool',
+                'interval': 'Int64',
                 'frequency': 'str',
                 'occurrences': 'Int64'
             }

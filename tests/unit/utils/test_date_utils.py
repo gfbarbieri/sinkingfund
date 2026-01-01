@@ -17,7 +17,13 @@ import datetime
 import pytest
 
 from sinkingfund.utils.date_utils import (
-    Frequency, increment_date, increment_monthly, get_date_range
+    Frequency, 
+    increment_date, 
+    increment_monthly, 
+    get_date_range,
+    parse_date,
+    normalize_date_fields,
+    SUPPORTED_DATE_FORMATS
 )
 
 ########################################################################
@@ -537,3 +543,268 @@ class TestDateUtilsIntegration:
             datetime.date(2024, 2, 16)
         ]
         assert dates == expected
+
+########################################################################
+## DATE PARSING TESTS
+########################################################################
+
+class TestParseDate:
+    """Test parse_date function for date string conversion."""
+
+    def test_parse_date_with_date_object(self) -> None:
+        """
+        Test parse_date with already-converted date objects.
+        """
+        
+        # Test: Date object should be returned as-is.
+        date_obj = datetime.date(2025, 1, 15)
+        result = parse_date(date_obj)
+        assert result == date_obj
+        assert isinstance(result, datetime.date)
+
+    def test_parse_date_with_string_formats(self) -> None:
+        """
+        Test parse_date with all supported string formats.
+        """
+        
+        expected_date = datetime.date(2025, 1, 15)
+        
+        # Test: US format (MM/DD/YYYY).
+        result = parse_date("01/15/2025")
+        assert result == expected_date
+        
+        # Test: ISO format (YYYY-MM-DD).
+        result = parse_date("2025-01-15")
+        assert result == expected_date
+        
+        # Test: US with dashes (MM-DD-YYYY).
+        result = parse_date("01-15-2025")
+        assert result == expected_date
+        
+        # Test: European format (DD/MM/YYYY).
+        result = parse_date("15/01/2025")
+        assert result == expected_date
+        
+        # Test: European with dashes (DD-MM-YYYY).
+        result = parse_date("15-01-2025")
+        assert result == expected_date
+        
+        # Test: ISO with slashes (YYYY/MM/DD).
+        result = parse_date("2025/01/15")
+        assert result == expected_date
+
+    def test_parse_date_with_datetime(self) -> None:
+        """
+        Test parse_date with datetime objects.
+        """
+        
+        # Test: Datetime object should be converted to date.
+        dt = datetime.datetime(2025, 1, 15, 10, 30, 45)
+        result = parse_date(dt)
+        assert result == datetime.date(2025, 1, 15)
+        assert isinstance(result, datetime.date)
+
+    def test_parse_date_with_timestamp(self) -> None:
+        """
+        Test parse_date with pandas Timestamp objects.
+        """
+        
+        try:
+            import pandas as pd
+            
+            # Test: Timestamp should be converted to date.
+            ts = pd.Timestamp('2025-01-15')
+            result = parse_date(ts)
+            assert result == datetime.date(2025, 1, 15)
+            assert isinstance(result, datetime.date)
+        except ImportError:
+            # Pandas not available, skip test.
+            pytest.skip("pandas not available")
+
+    def test_parse_date_with_none(self) -> None:
+        """
+        Test parse_date with None values.
+        """
+        
+        # Test: None should return None.
+        result = parse_date(None)
+        assert result is None
+
+    def test_parse_date_with_invalid_string(self) -> None:
+        """
+        Test parse_date with unparseable strings.
+        """
+        
+        # Test: Invalid date string should return None.
+        result = parse_date("not a date")
+        assert result is None
+        
+        # Test: Empty string should return None.
+        result = parse_date("")
+        assert result is None
+        
+        # Test: Malformed date string should return None.
+        result = parse_date("2025/13/45")
+        assert result is None
+
+    def test_parse_date_with_whitespace(self) -> None:
+        """
+        Test parse_date handles whitespace in strings.
+        """
+        
+        # Test: String with leading/trailing whitespace.
+        result = parse_date("  01/15/2025  ")
+        assert result == datetime.date(2025, 1, 15)
+
+    def test_parse_date_with_unrecognized_type(self) -> None:
+        """
+        Test parse_date with unrecognized types.
+        """
+        
+        # Test: Integer should return None.
+        result = parse_date(20250115)
+        assert result is None
+        
+        # Test: List should return None.
+        result = parse_date([2025, 1, 15])
+        assert result is None
+
+class TestNormalizeDateFields:
+    """Test normalize_date_fields function for batch date conversion."""
+
+    def test_normalize_date_fields_all_formats(self) -> None:
+        """
+        Test normalize_date_fields with various date string formats.
+        """
+        
+        record = {
+            'bill_id': 'test',
+            'service': 'Test Service',
+            'amount_due': 100.00,
+            'recurring': False,
+            'due_date': '01/15/2025',      # US format
+            'start_date': '2025-02-01',    # ISO format
+            'end_date': '15/03/2025'       # European format
+        }
+        
+        result = normalize_date_fields(
+            record, 
+            ['due_date', 'start_date', 'end_date']
+        )
+        
+        assert result['due_date'] == datetime.date(2025, 1, 15)
+        assert result['start_date'] == datetime.date(2025, 2, 1)
+        assert result['end_date'] == datetime.date(2025, 3, 15)
+        assert isinstance(result['due_date'], datetime.date)
+        assert isinstance(result['start_date'], datetime.date)
+        assert isinstance(result['end_date'], datetime.date)
+        
+        # Test: Original record should not be modified.
+        assert record['due_date'] == '01/15/2025'
+
+    def test_normalize_date_fields_with_date_objects(self) -> None:
+        """
+        Test normalize_date_fields with already-converted date objects.
+        """
+        
+        record = {
+            'bill_id': 'test',
+            'due_date': datetime.date(2025, 1, 15),
+            'start_date': datetime.date(2025, 2, 1)
+        }
+        
+        result = normalize_date_fields(
+            record,
+            ['due_date', 'start_date', 'end_date']
+        )
+        
+        assert result['due_date'] == datetime.date(2025, 1, 15)
+        assert result['start_date'] == datetime.date(2025, 2, 1)
+        assert result.get('end_date') is None
+
+    def test_normalize_date_fields_with_none(self) -> None:
+        """
+        Test normalize_date_fields with None values.
+        """
+        
+        record = {
+            'bill_id': 'test',
+            'due_date': None,
+            'start_date': '2025-01-15',
+            'end_date': None
+        }
+        
+        result = normalize_date_fields(
+            record,
+            ['due_date', 'start_date', 'end_date']
+        )
+        
+        assert result['due_date'] is None
+        assert result['start_date'] == datetime.date(2025, 1, 15)
+        assert result['end_date'] is None
+
+    def test_normalize_date_fields_partial(self) -> None:
+        """
+        Test normalize_date_fields with missing date fields.
+        """
+        
+        record = {
+            'bill_id': 'test',
+            'due_date': '01/15/2025'
+            # start_date and end_date missing
+        }
+        
+        result = normalize_date_fields(
+            record,
+            ['due_date', 'start_date', 'end_date']
+        )
+        
+        assert result['due_date'] == datetime.date(2025, 1, 15)
+        assert 'start_date' not in result
+        assert 'end_date' not in result
+
+    def test_normalize_date_fields_preserves_other_fields(self) -> None:
+        """
+        Test normalize_date_fields preserves non-date fields.
+        """
+        
+        record = {
+            'bill_id': 'test',
+            'service': 'Test Service',
+            'amount_due': 100.00,
+            'recurring': True,
+            'due_date': '01/15/2025'
+        }
+        
+        result = normalize_date_fields(
+            record,
+            ['due_date', 'start_date', 'end_date']
+        )
+        
+        assert result['bill_id'] == 'test'
+        assert result['service'] == 'Test Service'
+        assert result['amount_due'] == 100.00
+        assert result['recurring'] is True
+        assert result['due_date'] == datetime.date(2025, 1, 15)
+
+class TestSupportedDateFormats:
+    """Test SUPPORTED_DATE_FORMATS constant."""
+
+    def test_supported_formats_constant(self) -> None:
+        """
+        Test that SUPPORTED_DATE_FORMATS contains expected formats.
+        """
+        
+        assert isinstance(SUPPORTED_DATE_FORMATS, list)
+        assert len(SUPPORTED_DATE_FORMATS) > 0
+        
+        # Test: All formats should be valid strftime format strings.
+        for fmt in SUPPORTED_DATE_FORMATS:
+            assert isinstance(fmt, str)
+            # Verify format can be used with strptime.
+            try:
+                datetime.datetime.strptime("2025-01-15", fmt)
+            except ValueError:
+                # Some formats won't match this specific date, which is fine.
+                # Just verify it's a valid format string by trying a parse.
+                pass

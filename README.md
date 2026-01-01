@@ -146,13 +146,48 @@ fund.add_bills('data/bills.csv')
 - `service`: Name of the service or expense.
 - `amount_due`: Amount of the bill.
 - `recurring`: Boolean (True/False) if bill repeats.
-- `due_date`: When the bill is due (mm/dd/yyyy).
-- `start_date`: For recurring bills (mm/dd/yyyy).
-- `end_date`: Optional end date (mm/dd/yyyy).
+- `due_date`: When the bill is due (see Date Input Formats below).
+- `start_date`: For recurring bills (see Date Input Formats below).
+- `end_date`: Optional end date (see Date Input Formats below).
 - `frequency`: One of "daily", "weekly", "monthly", "quarterly", "annual".
 - `interval`: Number of frequency units between occurrences.
 
 ## Key Concepts
+
+### Date Input Formats
+
+The library supports multiple date string formats for flexibility when loading bills from files or providing dates programmatically. Dates can be provided as:
+
+- **Date objects**: `datetime.date(2025, 1, 15)`
+- **Date strings** in any of these formats:
+  - `01/15/2025` (US format: MM/DD/YYYY)
+  - `2025-01-15` (ISO format: YYYY-MM-DD)
+  - `01-15-2025` (US with dashes)
+  - `15/01/2025` (European format: DD/MM/YYYY)
+  - `15-01-2025` (European with dashes)
+  - `2025/01/15` (ISO with slashes)
+
+When loading from CSV, Excel, or JSON files, the library automatically detects and converts date strings to `datetime.date` objects. The same conversion happens when providing dates in dictionaries.
+
+**Example:**
+```python
+# All of these work:
+fund.add_bills({
+    'bill_id': 'tax',
+    'service': 'Property Tax',
+    'amount_due': 3600.00,
+    'recurring': False,
+    'due_date': '01/15/2025'  # String format
+})
+
+fund.add_bills({
+    'bill_id': 'tax',
+    'service': 'Property Tax',
+    'amount_due': 3600.00,
+    'recurring': False,
+    'due_date': datetime.date(2025, 1, 15)  # Date object
+})
+```
 
 ### Bills and Bill Instances
 
