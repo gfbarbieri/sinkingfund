@@ -272,6 +272,94 @@ class TestReadCsvToDict:
         assert record['end_date'] is None
         assert record['occurrences'] is None
 
+    def test_csv_float_interval_normalization(self) -> None:
+        """
+        Test that CSV with float interval values are normalized to integers.
+        """
+        
+        # Test: Create CSV with float interval values (common in CSV files).
+        csv_content = (
+            "bill_id,service,amount_due,recurring,due_date,start_date,"
+            "end_date,frequency,interval,occurrences\n"
+            "rent,Monthly Rent,1200.00,True,,01/01/2024,,monthly,1.0,\n"
+            "insurance,Car Insurance,450.00,True,,01/01/2024,,monthly,2.0,12.0\n"
+        )
+        
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', delete=False
+        ) as f:
+            f.write(csv_content)
+            temp_path = f.name
+        
+        try:
+            # Test: Read CSV file.
+            result = read_csv_to_dict(temp_path)
+            
+            # Test: Verify structure.
+            assert isinstance(result, list)
+            assert len(result) == 2
+            
+            # Test: Verify interval values are integers, not floats.
+            assert isinstance(result[0]['interval'], int)
+            assert result[0]['interval'] == 1
+            assert isinstance(result[1]['interval'], int)
+            assert result[1]['interval'] == 2
+            
+            # Test: Verify occurrences is integer if present.
+            assert isinstance(result[1]['occurrences'], int)
+            assert result[1]['occurrences'] == 12
+            
+        finally:
+            os.unlink(temp_path)
+
+    def test_csv_nonrecurring_bill_due_date_only(self) -> None:
+        """
+        Test that CSV with non-recurring bill having only due_date
+        normalizes correctly.
+        """
+        
+        # Test: Create CSV with non-recurring bill that has only due_date
+        # (no start_date or end_date). This tests the normalization in
+        # create_bills_from_data.
+        csv_content = (
+            "bill_id,service,amount_due,recurring,due_date,start_date,"
+            "end_date,frequency,interval,occurrences\n"
+            "registration,Car Registration,125.00,False,03/15/2024,,,,\n"
+        )
+        
+        with tempfile.NamedTemporaryFile(
+            mode='w', suffix='.csv', delete=False
+        ) as f:
+            f.write(csv_content)
+            temp_path = f.name
+        
+        try:
+            # Test: Read CSV file.
+            result = read_csv_to_dict(temp_path)
+            
+            # Test: Verify structure.
+            assert isinstance(result, list)
+            assert len(result) == 1
+            
+            record = result[0]
+            
+            # Test: Verify due_date is present.
+            assert record['due_date'] == datetime.date(2024, 3, 15)
+            assert isinstance(record['due_date'], datetime.date)
+            
+            # Test: Verify start_date and end_date are None in raw data
+            # (normalization happens in create_bills_from_data, not in
+            # reader).
+            assert record.get('start_date') is None or isinstance(
+                record.get('start_date'), datetime.date
+            )
+            assert record.get('end_date') is None or isinstance(
+                record.get('end_date'), datetime.date
+            )
+            
+        finally:
+            os.unlink(temp_path)
+
     @patch('sinkingfund.utils.readers.pd.read_csv')
     def test_csv_file_not_found_error(self, mock_read_csv) -> None:
         """

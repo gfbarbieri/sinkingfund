@@ -272,9 +272,16 @@ def _normalize_int_columns(
     
         # BUSINESS GOAL: Convert the column to an integer.
         if col in df_copy.columns:
-            df_copy[col] = df_copy[col].apply(
-                lambda x: None if pd.isna(x) else int(float(x))
-            )
+            # Use list comprehension to convert each value explicitly.
+            # This ensures proper handling of None and int conversion,
+            # avoiding pandas dtype coercion issues with apply().
+            normalized_values = [
+                None if pd.isna(x) else int(float(x))
+                for x in df_copy[col]
+            ]
+            # Create Series with explicit object dtype to preserve Python
+            # int and None types rather than pandas numeric types.
+            df_copy[col] = pd.Series(normalized_values, dtype='object')
     
     return df_copy
 
@@ -348,6 +355,14 @@ def read_csv_to_dict(file_path: PathLike) -> list[dict]:
     # Coerce the dataframe to convert Timestamps to date objects and
     # handle missing values.
     bills_df = _coerce_dataframe(bills_df)
+
+    # BUSINESS GOAL: Normalize integer columns to ensure interval and
+    # occurrences are Python int or None, never floats or pandas types.
+    # This prevents type-related errors from float values like 1.0 in CSV
+    # files.
+    bills_df = _normalize_int_columns(
+        bills_df, ['interval', 'occurrences']
+    )
 
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
@@ -433,6 +448,14 @@ def read_excel_to_dict(
     # handle missing values.
     bills_df = _coerce_dataframe(bills_df)
 
+    # BUSINESS GOAL: Normalize integer columns to ensure interval and
+    # occurrences are Python int or None, never floats or pandas types.
+    # This prevents type-related errors from float values like 1.0 in Excel
+    # files.
+    bills_df = _normalize_int_columns(
+        bills_df, ['interval', 'occurrences']
+    )
+
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
     
@@ -500,6 +523,14 @@ def read_json_to_dict(file_path: PathLike) -> list[dict]:
     # Coerce the dataframe to convert Timestamps to date objects and
     # handle missing values.
     bills_df = _coerce_dataframe(bills_df)
+
+    # BUSINESS GOAL: Normalize integer columns to ensure interval and
+    # occurrences are Python int or None, never floats or pandas types.
+    # This prevents type-related errors from float values like 1.0 in JSON
+    # files.
+    bills_df = _normalize_int_columns(
+        bills_df, ['interval', 'occurrences']
+    )
 
     # Convert to list of dictionaries.
     to_dict = bills_df.to_dict('records')
