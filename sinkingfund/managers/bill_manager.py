@@ -52,10 +52,12 @@ Examples
    manager.add_bills(bills)
 
    # Add individual bill
+   from decimal import Decimal
+   
    bill_data = {
        'bill_id': 'netflix',
        'service': 'Netflix Subscription',
-       'amount_due': 15.99,
+       'amount_due': Decimal("15.99"),
        'recurring': True,
        'start_date': date(2024, 1, 1),
        'frequency': 'monthly'
@@ -134,14 +136,22 @@ class BillManager:
     --------
     .. code-block:: python
 
-       # Create manager and load from multiple sources.
+       from datetime import date
+       from decimal import Decimal
+       from sinkingfund.managers import BillManager
+       
+       # Create manager and add bills.
        manager = BillManager()
        
-       # Load from file.
-       file_bills = manager.create_bills("monthly_bills.csv")
-       manager.add_bills(file_bills)
-       
        # Add individual bill.
+       bill_dict = {
+           'bill_id': 'electric',
+           'service': 'Electric Bill',
+           'amount_due': Decimal("150.00"),
+           'recurring': True,
+           'start_date': date(2024, 1, 1),
+           'frequency': 'monthly'
+       }
        single_bill = manager.create_bills([bill_dict])
        manager.add_bills(single_bill)
        

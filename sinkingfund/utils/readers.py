@@ -544,32 +544,3 @@ def read_json_to_dict(file_path: PathLike) -> list[dict]:
     ]
     
     return normalized_records
-
-def _coerce_scalar(value: Any) -> Any:
-    """
-    Convert pandas scalars to plain-Python scalars.
-
-    * Timestamp   -> datetime.date
-    * NaT / NA    -> None
-    * Int64 NA    -> None
-    * Everything else unchanged.
-    """
-
-    # Coerce missing values. This catches NaT, NA, NaN.
-    if pd.isna(value): 
-        return None
-
-    # Coerce datetime-like values to date objects.
-    if isinstance(value, (pd.Timestamp, datetime.datetime)):
-        return value.date()
-
-    # Leave all other scalars untouched
-    return value
-
-def _coerce_dataframe(df: pd.DataFrame) -> pd.DataFrame:
-    """
-    Return a new DataFrame whose elements are all plain-Python objects.
-    """
-
-    # Coerce the dataframe.
-    return df.map(_coerce_scalar)

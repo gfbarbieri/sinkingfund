@@ -53,6 +53,8 @@ Custom Weighting
 ## IMPORTS
 ########################################################################
 
+from __future__ import annotations
+
 import datetime
 
 from decimal import Decimal
