@@ -85,14 +85,14 @@ For more detailed examples and tutorials, see the [Examples section](https://sin
 ### Basic Workflow
 
 ```python
-import datetime
+from datetime import date
 
 from sinkingfund import SinkingFund
 
 # Create your sinking fund.
 fund = SinkingFund(
-    start_date=datetime.date.today(),
-    end_date=datetime.date(2024, 12, 31),
+    start_date=date(2025, 1, 1),
+    end_date=date(2025, 12, 31),
     balance=1000.00
 )
 
@@ -102,7 +102,7 @@ property_tax = {
     "service": "Property Tax",
     "amount_due": 3600.00,
     "recurring": True,
-    "start_date": datetime.date(2024, 11, 1),  # The bill's first due date.
+    "start_date": date(2025, 11, 1),  # The bill's first due date.
     "frequency": "annual",
     "interval": 1  # Once a year.
 }
@@ -112,7 +112,7 @@ car_insurance = {
     "service": "Car Insurance",
     "amount_due": 750.00,
     "recurring": True,
-    "start_date": datetime.date(2024, 4, 24),
+    "start_date": date(2025, 4, 24),
     "frequency": "monthly",
     "interval": 6  # Every 6 months.
 }
@@ -129,12 +129,14 @@ report = fund.quick_report()
 You can load bills from a CSV file with the following format:
 
 ```python
+from datetime import date
+
 from sinkingfund import SinkingFund
 
 # Create fund and add bills.
 fund = SinkingFund(
-    start_date=datetime.date.today(),
-    end_date=datetime.date(2024, 12, 31),
+    start_date=date(2025, 1, 1),
+    end_date=date(2025, 12, 31),
     balance=2000.00
 )
 

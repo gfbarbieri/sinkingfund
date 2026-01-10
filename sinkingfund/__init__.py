@@ -24,15 +24,14 @@ Quick Start
        balance=Decimal("10000.00")
    )
 
-   # Complete workflow.
-   fund.load_bills("bills.csv")
-   fund.setup_envelopes(contrib_interval=14)
-   fund.allocate_funds(strategy="sorted")
-
-   # Analysis and reporting.
-   projection = fund.get_cash_flow_projection()
-   status = fund.get_funding_status()
-   summary = fund.get_allocation_summary()
+   # Add bills (envelopes created automatically).
+   fund.add_bills("bills.csv")
+   
+   # Generate complete report with allocation and scheduling.
+   report = fund.quick_report(
+       contribution_interval=14,
+       allocation_strategy="sorted"
+   )
 
 """
 
