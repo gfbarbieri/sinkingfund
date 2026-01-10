@@ -11,6 +11,8 @@ flow projection.
 ## IMPORTS
 ########################################################################
 
+from __future__ import annotations
+
 import datetime
 
 from decimal import Decimal
@@ -124,16 +126,33 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
            fund.add_bills("bills.csv")
 
         Add a single bill from a dictionary:
 
         .. code-block:: python
 
+           from datetime import date
+           from decimal import Decimal
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
            fund.add_bills({
                'bill_id': 'electric',
                'service': 'Electric Bill',
-               'amount_due': 150.00,
+               'amount_due': Decimal("150.00"),
                'recurring': True,
                'start_date': date(2025, 1, 1),
                'frequency': 'monthly'
@@ -143,11 +162,20 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from decimal import Decimal
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
            bills = [
                {
                    'bill_id': 'electric',
                    'service': 'Electric Bill',
-                   'amount_due': 150.00,
+                   'amount_due': Decimal("150.00"),
                    'recurring': True,
                    'start_date': date(2025, 1, 1),
                    'frequency': 'monthly'
@@ -155,7 +183,7 @@ class SinkingFund:
                {
                    'bill_id': 'water',
                    'service': 'Water Bill',
-                   'amount_due': 75.00,
+                   'amount_due': Decimal("75.00"),
                    'recurring': True,
                    'start_date': date(2025, 1, 1),
                    'frequency': 'monthly'
@@ -235,16 +263,50 @@ class SinkingFund:
 
         .. code-block:: python
 
-           fund.update_bill("electric", {"amount_due": 175.00})
+           from datetime import date
+           from decimal import Decimal
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': Decimal("150.00"),
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           fund.update_bill("electric", {"amount_due": Decimal("175.00")})
 
         Update multiple properties:
 
         .. code-block:: python
 
+           from datetime import date
+           from decimal import Decimal
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'rent',
+               'service': 'Monthly Rent',
+               'amount_due': Decimal("1200.00"),
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            fund.update_bill(
                "rent",
                {
-                   "amount_due": 1250.00,
+                   "amount_due": Decimal("1250.00"),
                    "frequency": "monthly"
                }
            )
@@ -306,6 +368,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills([
+               {'bill_id': 'electric', 'service': 'Electric',
+                'amount_due': 150.00, 'recurring': True,
+                'start_date': date(2025, 1, 1), 'frequency': 'monthly'},
+               {'bill_id': 'water', 'service': 'Water',
+                'amount_due': 75.00, 'recurring': True,
+                'start_date': date(2025, 1, 1), 'frequency': 'monthly'}
+           ])
            fund.delete_bills(['electric', 'water'])
         """
         
@@ -349,6 +427,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            bills = fund.get_bills()
            for bill in bills:
                print(f"{bill.bill_id}: {bill.service}")
@@ -371,6 +465,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            instances = fund.get_bill_instances()
            for instance in instances:
                print(f"{instance.bill_id} due {instance.due_date}")
@@ -427,6 +537,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            envelopes = fund.get_envelopes()
            for envelope in envelopes:
                print(f"{envelope.bill_instance.bill_id}: "
@@ -458,6 +584,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 3, 1),
+               'frequency': 'monthly'
+           })
            envelope = fund.get_envelope(
                bill_id="electric",
                due_date=date(2025, 3, 15)
@@ -512,6 +654,14 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
            fund.update_balance(6000.00)
         """
         
@@ -552,13 +702,45 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            result = fund.allocate()
 
         Allocate with proportional strategy:
 
         .. code-block:: python
 
-           result = fund.allocate(strategy="proportional", target_months=3)
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           result = fund.allocate(strategy="proportional", method="equal")
         """
         # DESIGN CHOICE: Provide default sort_key for sorted strategy.
         if strategy == "sorted" and "sort_key" not in strategy_kwargs:
@@ -615,6 +797,24 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           fund.allocate()
+           fund.update_contribution_dates(contribution_interval=14)
            result = fund.schedule()
         """
         # Set the scheduler strategy.
@@ -657,7 +857,23 @@ class SinkingFund:
 
         .. code-block:: python
 
-           fund.delete_bills(['old_bill'], remove_envelopes=False)
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'old_bill',
+               'service': 'Old Bill',
+               'amount_due': 100.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           fund.delete_bills(['old_bill'])
            fund.sync_envelopes_with_bills()  # Clean up orphaned envelopes
         """
         
@@ -722,6 +938,22 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
            is_valid, issues = fund.validate_state()
            if not is_valid:
                for issue in issues:
@@ -786,12 +1018,50 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           fund.allocate()
+           fund.update_contribution_dates(contribution_interval=14)
+           fund.schedule()
            report = fund.report()
 
         Generate report with only active dates:
 
         .. code-block:: python
 
+           from datetime import date
+           from sinkingfund import SinkingFund
+           
+           fund = SinkingFund(
+               start_date=date(2025, 1, 1),
+               end_date=date(2025, 12, 31),
+               balance=1000.00
+           )
+           fund.add_bills({
+               'bill_id': 'electric',
+               'service': 'Electric Bill',
+               'amount_due': 150.00,
+               'recurring': True,
+               'start_date': date(2025, 1, 1),
+               'frequency': 'monthly'
+           })
+           fund.allocate()
+           fund.update_contribution_dates(contribution_interval=14)
+           fund.schedule()
            report = fund.report(active_only=True)
         """
 
@@ -898,10 +1168,12 @@ class SinkingFund:
 
         .. code-block:: python
 
+           from decimal import Decimal
+           
            fund = SinkingFund(
                start_date=date(2025, 1, 1), 
                end_date=date(2025, 12, 31),
-               balance=5000.00
+               balance=Decimal("5000.00")
            )
         
            # Creates envelopes automatically.
