@@ -20,7 +20,7 @@ Bill
     daily, weekly, monthly, quarterly, and annual with customizable
     intervals.
 
-BillInstance  
+BillInstance
     Represents a specific occurrence of a bill with a concrete due date
     and amount. A recurring bill generates multiple bill instances over
     time.
@@ -61,10 +61,12 @@ Creating a recurring monthly bill:
 
 .. code-block:: python
 
+   from decimal import Decimal
+   
    bill = Bill(
        bill_id="insurance",
        service="Car Insurance", 
-       amount_due=150.00,
+       amount_due=Decimal("150.00"),
        recurring=True,
        start_date=date(2025, 1, 15),
        frequency="monthly",
@@ -93,6 +95,8 @@ Getting the next instance with inclusive control:
 ########################################################################
 ## IMPORTS
 ########################################################################
+
+from __future__ import annotations
 
 import datetime
 
@@ -257,7 +261,7 @@ class Bill:
         The unique identifier for the bill.
     service : str  
         The name of the service or obligation that the bill represents.
-    amount_due : float
+    amount_due : Decimal
         The amount due for each instance of the bill.
     recurring : bool
         Whether the bill repeats according to a schedule. Non-recurring 
@@ -288,7 +292,7 @@ class Bill:
         The unique identifier for the bill.
     service : str
         The name of the service that the bill represents.
-    amount_due : float  
+    amount_due : Decimal
         The amount due for each instance of the bill.
     recurring : bool
         Whether the bill repeats according to a schedule.
@@ -374,7 +378,7 @@ class Bill:
             The unique identifier for the bill.
         service : str  
             The name of the service or obligation that the bill represents.
-        amount_due : float
+        amount_due : Decimal
             The amount due for each instance of the bill.
         recurring : bool
             Whether the bill repeats according to a schedule.
@@ -422,10 +426,12 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
                bill_id="annual_fee",
                service="Credit Card Annual Fee",
-               amount_due=95.00, 
+               amount_due=Decimal("95.00"), 
                recurring=False,
                due_date=date(2025, 12, 1)
            )
@@ -434,10 +440,12 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
                bill_id="rent", 
                service="Monthly Rent",
-               amount_due=1200.00,
+               amount_due=Decimal("1200.00"),
                recurring=True,
                start_date=date(2025, 1, 1),
                frequency="monthly", 
@@ -449,10 +457,12 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
                bill_id="quarterly_tax", 
                service="Quarterly Tax Payment",
-               amount_due=2500.00,
+               amount_due=Decimal("2500.00"),
                recurring=True,
                start_date=date(2025, 1, 15),
                end_date=date(2025, 12, 15),
@@ -629,14 +639,16 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
-               "rent", "Monthly Rent", 1200.00, True, 
+               "rent", "Monthly Rent", Decimal("1200.00"), True, 
                start_date=date(2025, 1, 1), frequency="monthly"
            )
            next_bill = bill.next_instance(
                date(2025, 3, 1), inclusive=True
            )
-           print(next_bill.due_date) # 2025-03-01
+           print(next_bill.due_date)  # 2025-03-01
         
         Get the next instance after today:
         
@@ -777,8 +789,10 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
-               "insurance", "Monthly Insurance", 200.00, True,
+               "insurance", "Monthly Insurance", Decimal("200.00"), True,
                start_date=date(2025, 1, 15), frequency="monthly"
            )
            
@@ -794,8 +808,10 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
-               "tax", "Annual Tax Payment", 5000.00, False,
+               "tax", "Annual Tax Payment", Decimal("5000.00"), False,
                due_date=date(2025, 4, 15)
            )
 
@@ -803,7 +819,7 @@ class Bill:
                date(2025, 1, 1), date(2025, 12, 31)
            )
            
-           print(len(instances)) # 1
+           print(len(instances))  # 1
 
         """
 
@@ -922,14 +938,16 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
-               "rent", "Monthly Rent", 1200.00, True,
+               "rent", "Monthly Rent", Decimal("1200.00"), True,
                start_date=date(2025, 1, 31), frequency="monthly"
            )
 
            next_date = bill._next_due_date(date(2025, 1, 31))
            
-           print(next_date) # 2025-02-28
+           print(next_date)  # 2025-02-28
         """
 
         # This function needs code to validate the current due date,
@@ -992,15 +1010,17 @@ class Bill:
         
         .. code-block:: python
         
+           from decimal import Decimal
+           
            bill = Bill(
-               "rent", "Monthly Rent", 1200.00, True,
+               "rent", "Monthly Rent", Decimal("1200.00"), True,
                start_date=date(2025, 1, 1), frequency="monthly"
            )
 
            count = bill._calculate_occurrences_in_range(
                date(2025, 1, 1), date(2025, 12, 31), "monthly", 1
            )
-           print(count) # 12
+           print(count)  # 12
         """
         
         # Initialize the number of occurrences.

@@ -107,6 +107,8 @@ Integrating with contribution schedules:
 ## IMPORTS
 ########################################################################
 
+from __future__ import annotations
+
 import datetime
 
 from decimal import Decimal

@@ -86,6 +86,8 @@ Timeline analysis:
 ## IMPORTS
 ########################################################################
 
+from __future__ import annotations
+
 import datetime
 
 from dataclasses import dataclass
@@ -400,3 +402,21 @@ class CashFlowSchedule:
     
     def __iter__(self) -> Iterator[CashFlow]:
         return iter(self.cash_flows)
+    
+    def copy(self) -> CashFlowSchedule:
+        """
+        Create a copy of this schedule.
+        
+        Returns
+        -------
+        CashFlowSchedule
+            A new schedule instance with a copy of the cash flows list.
+            
+        Notes
+        -----
+        Creates a shallow copy of the schedule. The CashFlow objects
+        themselves are immutable (frozen dataclass), so this is safe.
+        """
+        new_schedule = CashFlowSchedule()
+        new_schedule.cash_flows = self.cash_flows.copy()
+        return new_schedule
